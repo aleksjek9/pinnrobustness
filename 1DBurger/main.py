@@ -10,7 +10,7 @@ results = []
 
 #Run the PINN and baseline experiments
 results.append(PINN_experiment(data, noise))
-#results.append(traditional_experiment(data, noise))
+results.append(traditional_experiment(data, noise))
 
 #Graph the results
-#graph_data(results)
+graph_data(results)
