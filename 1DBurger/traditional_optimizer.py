@@ -69,14 +69,14 @@ class optimizer:
     def run(self):
         #Solves the inverse problem
 
-        options = {"ftol": 1e-8, "maxiter": 20}
+        options = {"ftol": 1e-16, "maxiter": 100}
 
         result = minimize(
             fun=self.error,
             x0=[5],
             method="SLSQP",
             jac=self.grad,
-            bounds=[(0, 5)],
+            bounds=[(-5, 5)],
             callback=None,
             options = options,
         )
