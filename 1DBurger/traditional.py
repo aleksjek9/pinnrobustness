@@ -3,7 +3,7 @@ import numpy as np
 from traditional_optimizer import optimizer
 from data import add_noise
 from bayes_opt import BayesianOptimization
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import root_mean_squared_error
 
 #How many times to run each experiment
 samples = 30
@@ -83,7 +83,7 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
             rms = parameter_optimizer.test()
             noise_rmse.append(rms)
             noise_estimated_parameter.append(best_viscosity)
-            noise_parameter_error.append(mean_squared_error([best_viscosity], [0.01/np.pi]))
+            noise_parameter_error.append(root_mean_squared_error([best_viscosity], [0.01/np.pi]))
 
             #Outputs statistics while running
             print("Sample: ", str(sample + 1), " out of ", str(samples))
