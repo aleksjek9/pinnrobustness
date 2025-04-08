@@ -128,7 +128,7 @@ class Model(nn.Module):
 
         total_loss = bc_loss + ic_loss + phy_loss + cc_loss
 
-        self.save_if_best(val_loss)
+        #self.save_if_best(val_loss)
 
         return total_loss
 
