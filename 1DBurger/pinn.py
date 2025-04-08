@@ -3,7 +3,7 @@ from modules import Model
 from data import prepare_tensor, add_noise
 from fem import burgers_1d
 import numpy as np
-from sklearn.metrics import mean_squared_error 
+from sklearn.metrics import root_mean_squared_error 
 
 #The amount of times to run each experiment
 #in order to get a standard deviation
@@ -47,20 +47,20 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
 
             #Save RMSE on test set
             pred = PINN.forward(x_test)
-            error = mean_squared_error(pred.detach(), y_test.reshape(25600, 1))
+            error = root_mean_squared_error(pred.detach(), y_test.reshape(25600, 1))
             noise_rmse.append(error)
 
             #Save RMSE using estimated parameters with FEM
             initial_condition = -1 * np.sin(np.linspace(-1, 1, 256) * np.pi)
             fem_result = prepare_tensor(burgers_1d(viscosity, initial_condition))
-            error = mean_squared_error(fem_result.reshape(25600, 1), y_test.reshape(25600, 1))
+            error = root_mean_squared_error(fem_result.reshape(25600, 1), y_test.reshape(25600, 1))
             noise_fem_error.append(error)
 
             #Save estimated parameter
             noise_estimated_parameter.append(viscosity)
 
             #Save parameter error
-            error = mean_squared_error([viscosity], [0.01/np.pi])
+            error = root_mean_squared_error([viscosity], [0.01/np.pi])
             noise_parameter_error.append(error)
 
             if verbose:
