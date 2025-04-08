@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize
 from fem import burgers_1d, get_gradient, get_prediction_indexes
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import root_mean_squared_error
 
 
 class optimizer:
@@ -49,7 +49,7 @@ class optimizer:
         y_val = np.array(self.y_val).reshape(2, 256)
         result = get_prediction_indexes(result, self.val_indexes)
 
-        rmse = mean_squared_error(y_val, result)
+        rmse = root_mean_squared_error(y_val, result)
 
         return rmse
 
@@ -61,7 +61,7 @@ class optimizer:
         y_test = np.array(self.y_test).reshape(25600)
         result = np.array(result).reshape(25600)
         
-        rmse = mean_squared_error(y_test, result)
+        rmse = root_mean_squared_error(y_test, result)
 
         return rmse
 
