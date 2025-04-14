@@ -58,8 +58,8 @@ class optimizer:
         #Returns test set error
 
         result = self.burgers_1d(self.viscosity, self.initial_condition)
-        y_test = np.array(self.y_test).reshape(25600)
-        result = np.array(result).reshape(25600)
+        y_test = np.array(self.y_test).reshape(25344)
+        result = np.array(result).reshape(25344)
         
         rmse = root_mean_squared_error(y_test, result)
 

@@ -34,6 +34,8 @@ def load_data():
     t, x, exact = data["t"], data["x"], data["usol"].T
 
     for i in range(0, len(t)):
+        if t[i][0] == 0:
+            continue
         for j in range(0, len(x)):
             input.append(np.array([x[j][0], t[i][0]]))
             output.append(np.array([exact[i][j]]))

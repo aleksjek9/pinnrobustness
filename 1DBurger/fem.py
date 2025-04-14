@@ -103,23 +103,16 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False):
     #Solving and saving for each time step
     while t < t_final:
 
+        solve(F == 0, u, bc, J=J, solver_parameters={'newton_solver':  {'maximum_iterations': 50}})
+
         if gradient_mode:
             result.append(u.copy(deepcopy=True))
         else:
             result.append(u.vector().get_local(dof_to_vertex_map(V)))
 
-        solve(F == 0, u, bc, J=J, solver_parameters={'newton_solver':  {'maximum_iterations': 50}})
-
         t = t + float(DT)
 
         u_old.assign(u)
-
-    if gradient_mode:
-        #Gradient mode is for when training
-        result.append(u.copy(deepcopy=True))
-    else:
-        #Not gradient mode when just running a simulation.
-        result.append(u.vector().get_local(dof_to_vertex_map(V)))
 
     if gradient_mode:
         return [result], control_variable, solution_comparison, dof_to_vertex_map(V), []

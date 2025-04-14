@@ -47,13 +47,13 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
 
             #Save RMSE on test set
             pred = PINN.forward(x_test)
-            error = root_mean_squared_error(pred.detach(), y_test.reshape(25600, 1))
+            error = root_mean_squared_error(pred.detach(), y_test.reshape(25344, 1))
             noise_rmse.append(error)
 
             #Save RMSE using estimated parameters with FEM
             initial_condition = -1 * np.sin(np.linspace(-1, 1, 256) * np.pi)
             fem_result = prepare_tensor(burgers_1d(viscosity, initial_condition))
-            error = root_mean_squared_error(fem_result.reshape(25600, 1), y_test.reshape(25600, 1))
+            error = root_mean_squared_error(fem_result.reshape(25344, 1), y_test.reshape(25344, 1))
             noise_fem_error.append(error)
 
             #Save estimated parameter
