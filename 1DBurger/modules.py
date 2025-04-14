@@ -12,6 +12,7 @@ class Model(nn.Module):
         self.cc = None
         self.ev = None
         self.pde = None
+        self.weight = 1
         self.visc = nn.Parameter(data=torch.tensor([math.log10(5)/math.log10(10)]))
         self.network.register_parameter("visc", self.visc)
         self.adam_optimizer = optim.AdamW(self.network.parameters(), weight_decay=0)
@@ -126,7 +127,7 @@ class Model(nn.Module):
         phy_loss = self.phy_loss(pde)
         val_loss = self.mse_loss(val)
 
-        total_loss = bc_loss + ic_loss + phy_loss + cc_loss
+        total_loss = (bc_loss + ic_loss + cc_loss) * self.weight + phy_loss 
 
         #self.save_if_best(val_loss)
 
@@ -147,11 +148,45 @@ class Model(nn.Module):
         #Trains the model with both optimizers.
 
         #Train with ADAM
-        for _ in range(0, iterations):
+        for iter in range(0, iterations):
             loss = self.loss_fn(bc, ic, cc, val, pde)
             self.adam_optimizer.zero_grad()
             loss.backward()
             self.adam_optimizer.step()
+
+            #Gradient pathologies adaptive weight from https://arxiv.org/abs/2001.04536.
+            if iter % 10 == 0:
+
+                #Get max gradient of physics loss
+                phy_loss = self.phy_loss(pde)
+                self.adam_optimizer.zero_grad()
+                phy_loss.backward()
+                gradients = []
+
+                for param in self.parameters():
+                    if param.grad is not None:
+                        gradients.append(param.grad.abs().max())
+
+                max_gradient = torch.max(torch.stack(gradients))
+                max_grad = max_gradient.item()
+
+                #Get mean absolute gradient of data loss
+                loss = self.mse_loss(cc) + self.mse_loss(ic) + self.mse_loss(bc)
+                self.adam_optimizer.zero_grad()
+                loss.backward()
+                gradients = []
+
+                for param in self.parameters():
+                    if param.grad is not None:
+                        gradients.append(param.grad.abs())
+
+                all_gradients = torch.cat([g.view(-1) for g in gradients])
+                mean_gradient = all_gradients.mean()
+                mean_grad = mean_gradient.item()
+
+                #Calculate the new weight using alpha=0.9
+                self.weight = (1-0.9)*self.weight + 0.9*(max_grad/mean_grad)
+                #print("New weight:", self.weight)
         
         #self.network.load_state_dict(torch.load("best.hdf5"))
 
