@@ -57,7 +57,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             t = x_test[:, 2]
 
             x.requires_grad, y.requires_grad, t.requires_grad = True, True, True
-            x_test = torch.stack((x, y, t), dim=1)
+            x_test = torch.stack((x, y, t), dim=1)[t != 0]
 
             pred = PINN.forward(x_test)
 
@@ -69,12 +69,11 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             pred = pred.detach().cpu()
             y_test = y_test.cpu()
 
-            error = root_mean_squared_error(pred, y_test[:, 0:2])
+            error = root_mean_squared_error(pred, y_test[~np.isclose(x_test[:, 2].detach().numpy(), 0.0), 0:2])
             noise_rmse.append(error)
 
             #Save RMSE using estimated parameters with FEM
             fem_result = prepare_tensor(tgv_vortex([viscosity], pinn=x_test))
-            #Index 3969: skips initial condition
             error = root_mean_squared_error(np.array(fem_result)[:, 0:2], y_test[~np.isclose(x_test[:, 2].detach().numpy(), 0.0), 0:2])
             noise_fem_error.append(error)
 

@@ -6,7 +6,7 @@ from bayes_opt import BayesianOptimization
 from sklearn.metrics import root_mean_squared_error
 
 #How many times to run each experiment
-samples = 5
+samples = 1
 
 def single_experiment(l2_lambda, parameter_optimizer):
     '''Runs a single experiment and returns validation error.
