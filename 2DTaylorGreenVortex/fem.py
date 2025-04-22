@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 #Basic settings
 set_log_level(1000)
-nx, ny = 8,8
+nx, ny = 64,64
 L = 2 * np.pi
 dt = 0.01
 max_step = 250
