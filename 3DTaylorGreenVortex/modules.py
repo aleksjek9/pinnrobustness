@@ -37,7 +37,7 @@ class Model(nn.Module):
         self.lbfgs_optimizer = torch.optim.LBFGS(
             self.network.parameters(),
             lr=1,
-            max_iter=1,
+            max_iter=50000,
             max_eval=None,
             tolerance_grad=1e-16,
             tolerance_change=1e-16,
