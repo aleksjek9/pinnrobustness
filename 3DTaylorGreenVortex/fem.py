@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 #Basic settings
 set_log_level(1000)
-nx, ny, nz = 4, 4, 4
+nx, ny, nz = 32,32,32
 Lz = 2 * np.pi
 Lxy = np.pi
 dt = 0.05
