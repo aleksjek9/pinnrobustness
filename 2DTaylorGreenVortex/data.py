@@ -64,9 +64,13 @@ def create_data():
     return input, output
 
 def create_training_data(x_test, y_test):
-    '''From full dataset, samples 5000 observations.'''
+    '''From full dataset, samples for training and validation set.'''
 
-    random_indices = sorted(random.sample(range(len(x_test)), 5000))
+    #Making sure that selection is without replacement
+    indices = random.sample(range(len(x_test)), 6000)
+
+    random_indices = sorted(indices[:5000])
+    random_indices1 = sorted(indices[5000:])
 
     x_train, y_train, x_val, y_val = [], [], [], []
 
@@ -74,13 +78,17 @@ def create_training_data(x_test, y_test):
         x_train.append(x_test[ind])
         y_train.append(y_test[ind])
 
-    random_indices1 = sorted(random.sample(range(len(x_test)), 1000))
-
     for ind in random_indices1:
         x_val.append(x_test[ind])
         y_val.append(y_test[ind])
 
-    return x_train, y_train, x_val, y_val
+    #Removes training and validation data from test set
+    for i in sorted(indices, reverse=True):
+        del x_test[i]
+        del y_test[i]
+
+
+    return x_train, y_train, x_val, y_val, x_test, y_test
 
 def get_data():
     '''Loads data, if it exists, otherwise creates.'''
@@ -91,7 +99,7 @@ def get_data():
         return all_data
 
     x_test, y_test = create_data()
-    x_train, y_train, x_val, y_val= create_training_data(x_test, y_test)
+    x_train, y_train, x_val, y_val, x_test, y_test = create_training_data(x_test, y_test)
     pde_x = x_train #Uses same data for physics loss as for data loss
 
     all_data = np.array([x_test, y_test, x_train, y_train, x_val, y_val, pde_x], dtype=object)
