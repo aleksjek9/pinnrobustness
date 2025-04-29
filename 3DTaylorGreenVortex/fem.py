@@ -116,7 +116,7 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
     'preconditioner': 'ilu',
     'krylov_solver': {
         'absolute_tolerance': 1e-12,
-        'relative_tolerance': 1e-12,
+        'relative_tolerance': 1e-10,
         'maximum_iterations': 5000,
     }
     }
