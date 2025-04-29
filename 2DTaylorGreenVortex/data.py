@@ -1,6 +1,11 @@
 import os, random, torch
 import numpy as np
 
+seed = int(time.time()) % 1000
+random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+
 #Configurations
 wave_number = 1
 visc = 0.1
