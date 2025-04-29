@@ -2,6 +2,12 @@ import numpy as np
 import torch, time, random
 from torch import nn, autograd, optim, mean
 
+seed = int(time.time()) % 1000
+np.random.seed(seed)
+random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+
 def gradient(output, input, create=True):
     '''Get gradient output with regards to input.'''
 
