@@ -58,7 +58,11 @@ def create_training_data(x_test, y_test):
         x_val.extend(x_test[ind * 256: ind * 256 + 256])
         y_val.extend(y_test[ind * 256: ind * 256 + 256])
 
-    return x_train, y_train, x_val, y_val, random_indices
+    for i in sorted(random_indices, reverse=True):
+        del x_test[i]
+        del y_test[i]
+
+    return x_test, y_test, x_train, y_train, x_val, y_val, random_indices
 
 def create_bc_data():
     '''Creates data for training boundary condition.'''
@@ -102,7 +106,7 @@ def get_data():
         return all_data
     
     x_test, y_test = load_data()
-    x_train, y_train, x_val, y_val, random_indices = create_training_data(x_test, y_test)
+    x_test, y_test, x_train, y_train, x_val, y_val, random_indices = create_training_data(x_test, y_test)
     x_bc, y_bc = create_bc_data()
     x_ic, y_ic = create_ic_data()
     pde_x = create_pde_data()
