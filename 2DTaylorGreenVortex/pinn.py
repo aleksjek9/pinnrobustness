@@ -7,8 +7,8 @@ from sklearn.metrics import root_mean_squared_error
 
 #The amount of times to run each experiment
 #in order to get a standard deviation
-samples = 5
-device = "cpu"
+samples = 1
+device = "cuda"
 
 def PINN_experiment(data, noise, verbose=True, rerun=False):
     #Runs the full PINN experiments
@@ -41,6 +41,8 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             y_train = add_noise_pinn([y_train], noise_level=noise_level)
             x_train = x_train.to(device)
             y_train = y_train.to(device)
+            x_val = x_val.to(device)
+            y_val = y_val.to(device)
             x_test = x_test.to(device)
             y_test = y_test.to(device)
             pde_x = pde_x.to(device)
@@ -48,16 +50,19 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             #Train model
             PINN = Model(name=str(noise_level))
             PINN.to(device)
-            PINN.train_model([x_train, y_train], [x_test, y_test], pde_x, iterations=200000)
-            viscosity = PINN.visc.item()
+            PINN.train_model([x_train, y_train], [x_val, y_val], pde_x, iterations=200000)
+            viscosity = torch.nn.functional.softplus(PINN.visc).item() + 0.00314159265
 
             #Save RMSE on test set
+            y_test = y_test[~np.isclose(x_test[:, 2].detach().cpu().numpy(), 0.0), 0:2]
+            x_test = x_test[x_test[:, 2] != 0]
+            
             x = x_test[:, 0]
             y = x_test[:, 1]
             t = x_test[:, 2]
 
             x.requires_grad, y.requires_grad, t.requires_grad = True, True, True
-            x_test = torch.stack((x, y, t), dim=1)[t != 0]
+            x_test = torch.stack((x, y, t), dim=1)
 
             pred = PINN.forward(x_test)
 
@@ -69,12 +74,12 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             pred = pred.detach().cpu()
             y_test = y_test.cpu()
 
-            error = root_mean_squared_error(pred, y_test[~np.isclose(x_test[:, 2].detach().numpy(), 0.0), 0:2])
+            error = root_mean_squared_error(pred, y_test)
             noise_rmse.append(error)
 
             #Save RMSE using estimated parameters with FEM
-            fem_result = prepare_tensor(tgv_vortex([viscosity], pinn=x_test))
-            error = root_mean_squared_error(np.array(fem_result)[:, 0:2], y_test[~np.isclose(x_test[:, 2].detach().numpy(), 0.0), 0:2])
+            fem_result = tgv_vortex([viscosity], pinn=x_test)
+            error = root_mean_squared_error(np.array(fem_result)[:, 0:2], y_test)
             noise_fem_error.append(error)
 
             #Save estimated parameter

@@ -131,7 +131,7 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
         elif len(pinn) > 0:
             #For FEM/PINN
             mean_pressure = calculate_normalizer(p_next)
-            for point in pinn[np.isclose(pinn[:, 2].detach().numpy() * 100, float(t+1)), 0:2]:
+            for point in pinn[np.isclose(pinn[:, 2].detach().cpu().numpy() * 100, float(t+1)), 0:2]:
                 x_vel, y_vel = u_next(point[0], point[1])
                 pressure = p_next(point[0], point[1]) - mean_pressure
                 predictions.append([x_vel, y_vel, pressure])

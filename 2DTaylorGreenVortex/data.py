@@ -67,7 +67,7 @@ def create_training_data(x_test, y_test):
     '''From full dataset, samples for training and validation set.'''
 
     #Making sure that selection is without replacement
-    indices = random.sample(range(len(x_test)), 6000)
+    indices = random.sample(range(1, len(x_test)), 6000)
 
     random_indices = sorted(indices[:5000])
     random_indices1 = sorted(indices[5000:])

@@ -202,7 +202,7 @@ class Model(nn.Module):
             self.val_loss = val_loss
             torch.save(self.network.state_dict(), "best.hdf5")
 
-    def loss_fn(self, cc, val, pde):
+    def loss_fn(self, cc, val, pde, lbfgs=False):
         #Calculates the full loss function.
 
         cc_loss = self.mse_loss(cc)
@@ -213,10 +213,13 @@ class Model(nn.Module):
         elapsed_time = time.time() - self.start_time
         elapsed_minutes = elapsed_time / 60
 
-        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", cc_loss.item(), " Parameter: ", self.visc.item())
+        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", cc_loss.item(), " Parameter: ", torch.nn.functional.softplus(self.visc).item() + 0.00314159265)
         
-        self.save_history(elapsed_minutes, phy_loss.item(), cc_loss.item(), val, self.visc.item())
-        #self.save_if_best(val_loss)
+        self.save_history(elapsed_minutes, phy_loss.item(), cc_loss.item(), val, torch.nn.functional.softplus(self.visc).item() + 0.00314159265)
+        
+        if lbfgs:
+            val_loss = self.mse_loss(val)
+            self.save_if_best(val_loss)
 
         return total_loss
 
@@ -226,7 +229,7 @@ class Model(nn.Module):
         self.epoch = self.epoch + 1
         self.lbfgs_optimizer.zero_grad()
 
-        loss = self.loss_fn(self.cc, self.ev, self.pde)
+        loss = self.loss_fn(self.cc, self.ev, self.pde, lbfgs=True)
 
         loss.backward()
 
@@ -285,4 +288,4 @@ class Model(nn.Module):
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
 
-        #self.network.load_state_dict(torch.load("best.hdf5"))
+        self.network.load_state_dict(torch.load("best.hdf5"))
