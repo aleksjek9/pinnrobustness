@@ -56,65 +56,61 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False):
     viscosity = float(viscosity)
     viscosity = Constant(viscosity)
     control_variable = Control(viscosity)
-    DT = Constant(0.01)
+    dt = 0.01
     t = 0.0
     t_final = 0.99
     result = []
 
     #Create grid
     mesh = IntervalMesh(gridSize, -1, 1)
-    V = FunctionSpace(mesh, "CG", 1)
-    solution_comparison = Function(V)
+    velocity = FunctionSpace(mesh, "CG", 1)
+    solution_comparison = Function(velocity)
     
     #Boundary condition
-    def on_left(x, on_boundary):
+    def left_boundary(x, on_boundary):
         return on_boundary and near(x[0], -1.)
 
-    def on_right(x, on_boundary):
+    def right_boundary(x, on_boundary):
         return on_boundary and near(x[0], 1.)
 
-    bc_left = DirichletBC(V, 0, on_left)
-    bc_right = DirichletBC(V, 0, on_right)
-    bc = [bc_left, bc_right]
+    left_dirichlet = DirichletBC(velocity, 0, left_boundary)
+    right_dirichlet = DirichletBC(velocity, 0, right_boundary)
+    boundary_conditions = [left_dirichlet, right_dirichlet]
 
     #Initial condition
-    u_init = Function(V)
-    u_init.vector()[:] = initial_condition
-    u_init.vector()[:] = u_init.vector().get_local(dof_to_vertex_map(V))
+    init_vel = Function(velocity)
+    init_vel.vector()[:] = initial_condition
+    init_vel.vector()[:] = init_vel.vector().get_local(dof_to_vertex_map(velocity))
 
     #Trial and test functions
-    u = Function(V)
-    u_old = Function(V)
-    v = TestFunction(V)
+    cur_vel = Function(velocity)
+    old_vel = Function(velocity)
+    test_vel = TestFunction(velocity)
 
     #Weak formulation
-    u = u_init
-    u_old.assign(u)
+    cur_vel = init_vel
+    old_vel.assign(cur_vel)
 
-    F = (
-        dot(u - u_old, v) / DT
-        + viscosity * inner(grad(u), grad(v))
-        + inner(u * u.dx(0), v)
-    ) * dx
+    F = (dot(cur_vel - old_vel, test_vel) / dt + viscosity * inner(grad(cur_vel), grad(test_vel)) + inner(cur_vel * cur_vel.dx(0), test_vel)) * dx
 
     #Jacobian
-    J = derivative(F, u)
+    jacobian = derivative(F, cur_vel)
 
     #Solving and saving for each time step
     while t < t_final:
 
-        solve(F == 0, u, bc, J=J, solver_parameters={'newton_solver':  {'maximum_iterations': 50}})
+        solve(F == 0, cur_vel, boundary_conditions, J=jacobian, solver_parameters={'newton_solver':  {'maximum_iterations': 50}})
 
         if gradient_mode:
-            result.append(u.copy(deepcopy=True))
+            result.append(cur_vel.copy(deepcopy=True))
         else:
-            result.append(u.vector().get_local(dof_to_vertex_map(V)))
+            result.append(cur_vel.vector().get_local(dof_to_vertex_map(velocity)))
 
-        t = t + float(DT)
+        t = t + float(dt)
 
-        u_old.assign(u)
+        old_vel.assign(cur_vel)
 
     if gradient_mode:
-        return [result], control_variable, solution_comparison, dof_to_vertex_map(V), []
+        return [result], control_variable, solution_comparison, dof_to_vertex_map(velocity), []
  
     return [result]
