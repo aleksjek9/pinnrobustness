@@ -1,7 +1,8 @@
 import os, random, torch
 import numpy as np
+import secrets
 
-seed = int(time.time()) % 1000
+seed = secrets.randbelow(1_000_000)
 random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
