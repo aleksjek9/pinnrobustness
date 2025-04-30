@@ -5,7 +5,7 @@ from fem import tgv_vortex
 from modules import Model, gradient
 from sklearn.metrics import root_mean_squared_error 
 
-seed = int(time.time()) % 1000
+seed = secrets.randbelow(1_000_000)
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
