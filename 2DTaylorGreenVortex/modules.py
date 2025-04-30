@@ -1,8 +1,8 @@
 import numpy as np
-import torch, time, random
+import torch, time, random, secrets
 from torch import nn, autograd, optim, mean
 
-seed = int(time.time()) % 1000
+seed = secrets.randbelow(1_000_000)
 np.random.seed(seed)
 random.seed(seed)
 torch.manual_seed(seed)
