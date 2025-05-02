@@ -51,7 +51,7 @@ def graph_data(result):
     plt.errorbar([0, 0.5, 1, 2, 3, 5, 7, 10, 25], pinn_means["fem_error"], yerr=pinn_stdevs["fem_error"],fmt='o', color="black",capsize=5)
     plt.xlabel('Sigma')
     plt.ylabel('RMSE')
-    plt.ylim(-0.2, 0.2)
+    #plt.ylim(-0.2, 0.2)
     plt.title("1D Burgers' equation, prediction accuracy")
     plt.legend()
     plt.savefig('./plots/prediction_accuracy.png')
@@ -67,7 +67,7 @@ def graph_data(result):
     plt.xlabel('Sigma')
     plt.ylabel('Parameter') 
     plt.title("1D Burgers' equation, parameter discovered")
-    plt.ylim(-0.05, 0.05)
+    #plt.ylim(-0.05, 0.05)
     plt.legend()
     plt.savefig('./plots/paremeter_identification_accuracy.png')
 

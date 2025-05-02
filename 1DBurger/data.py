@@ -58,9 +58,11 @@ def create_training_data(x_test, y_test):
         x_val.extend(x_test[ind * 256: ind * 256 + 256])
         y_val.extend(y_test[ind * 256: ind * 256 + 256])
 
-    for i in sorted(random_indices, reverse=True):
-        del x_test[i]
-        del y_test[i]
+    for ind in sorted(random_indices, reverse=True):
+        del x_test[ind * 256: (ind + 1) * 256]
+        del y_test[ind * 256: (ind + 1) * 256]
+
+    print(len(x_test), len(y_test))
 
     return x_test, y_test, x_train, y_train, x_val, y_val, random_indices
 

@@ -47,7 +47,7 @@ def get_gradient(l2_lambda, indexes, results, y_train, control_variable, solutio
 
     return error, gradient
 
-def burgers_1d(viscosity, initial_condition, gradient_mode=False):
+def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indices = []):
     '''Inspired by https://people.math.sc.edu/Burkardt/fenics_src/burgers_time_viscous/burgers_time_viscous.html.'''
 
     #Variables
@@ -99,11 +99,12 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False):
     #Solving and saving for each time step
     while t < t_final:
 
+        t = round(t, 2)
         solve(F == 0, cur_vel, boundary_conditions, J=jacobian, solver_parameters={'newton_solver':  {'maximum_iterations': 50}})
 
-        if gradient_mode:
+        if gradient_mode and (int((t*100)+1) not in excluded_indices):
             result.append(cur_vel.copy(deepcopy=True))
-        else:
+        elif int((t*100)+1) not in excluded_indices:
             result.append(cur_vel.vector().get_local(dof_to_vertex_map(velocity)))
 
         t = t + float(dt)
@@ -112,5 +113,5 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False):
 
     if gradient_mode:
         return [result], control_variable, solution_comparison, dof_to_vertex_map(velocity), []
- 
+    
     return [result]
