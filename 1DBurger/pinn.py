@@ -44,7 +44,6 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             PINN = Model()
             PINN.train_model([x_bc, y_bc], [x_ic, y_ic], [x_train, y_train_noise], [x_val, y_val_noise], pde_x, iterations=4000)
             viscosity = 10**PINN.visc.item()
-            viscosity = 0.01/np.pi
 
             #Save RMSE on test set
             pred = PINN.forward(x_test)
