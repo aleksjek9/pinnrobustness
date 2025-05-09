@@ -72,23 +72,11 @@ class Model(nn.Module):
 
         network = []
 
-        network.append(nn.Linear(3, 20).double())
+        network.append(nn.Linear(3, 10).double())
         network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Linear(10, 10).double())
         network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
-        network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
-        network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
-        network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
-        network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
-        network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
-        network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Linear(10, 10).double())
         network.append(nn.Tanh().double())
         network.append(nn.Linear(20, 2).double())
 
