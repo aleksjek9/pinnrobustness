@@ -36,8 +36,13 @@ def get_gradient(l2_lambda, indexes, results, y_train, control_variable,
     viscosity = float(control_variable.tape_value())
 
     K = (
-        float(l2_lambda*viscosity)**2) 
-    + assemble(sum(inner(true - computed, true - computed) * dx for (true, computed) in combined)
+        float(l2_lambda * viscosity) ** 2
+        + assemble(
+            sum(
+                inner(true - computed, true - computed) * dx
+                for (true, computed) in combined
+            )
+        )
     )
 
     error = float(K)
