@@ -37,6 +37,7 @@ class Model(nn.Module):
         self.network = self.create_network()
 
         self.start_time = time.time()
+        self.patience = 0
         self.epoch = 0
         self.weight = 1
         self.minutes = []
@@ -204,8 +205,11 @@ class Model(nn.Module):
         """
 
         if self.val_loss is None or self.val_loss < val_loss:
+            self.patience = 0
             self.val_loss = val_loss
             torch.save(self.network.state_dict(), "best.hdf5")
+        else:
+            patience += 1
 
     def loss_fn(self, cc, val, pde, lbfgs=False):
         """Calculates the full loss function."""
@@ -228,9 +232,9 @@ class Model(nn.Module):
             torch.nn.functional.softplus(self.visc).item() + 0.00314159265
         )
         
-        if lbfgs:
-            val_loss = self.mse_loss(val)
-            self.save_if_best(val_loss)
+        val_loss = self.mse_loss(val)
+        self.save_if_best(val_loss)
+            
         return total_loss
 
     def closure(self):
@@ -252,6 +256,9 @@ class Model(nn.Module):
             self.adam_optimizer.zero_grad()
             loss.backward()
             self.adam_optimizer.step()
+
+            if patience > 60000:
+                iter = iterations
 
             """Gradient pathologies adaptive weight from https://arxiv.org/abs/2001.04536."""
             if iter % 10 == 0:
@@ -286,7 +293,7 @@ class Model(nn.Module):
                 self.weight = 0.1 * self.weight + 0.9 * (max_grad / mean_grad)
                 print("New weight:", self.weight)
         
-        #self.network.load_state_dict(torch.load("best.hdf5"))
+        self.network.load_state_dict(torch.load("best.hdf5"))
 
         # Train with L-BFGS
         self.cc = cc
