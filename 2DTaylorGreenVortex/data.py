@@ -1,5 +1,7 @@
-import os, random, torch
+import os
+import random
 import numpy as np
+import torch
 import secrets
 
 seed = secrets.randbelow(1_000_000)
@@ -7,53 +9,41 @@ random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
-#Configurations
+# Configurations
 wave_number = 1
 visc = 0.1
-L = 2*np.pi
+L = 2 * np.pi
 dt = 0.1
 T = 2.5
 dx = 0.05
 dy = 0.05
 
 def add_noise_pinn(data, noise_level=0):
-    '''Adds noise to data.'''
+    '''Adds noise to data for the PINN experiment.'''
 
-    noisy_data = []
-
-    for entry in data:
-        noisy_data.append(entry + np.random.normal(0, noise_level, entry.shape))
-
+    noisy_data = [entry + np.random.normal(0, noise_level, entry.shape) for entry in data]
     return noisy_data[0]
+
 
 def add_noise(data, noise_level=0):
     '''Adds noise to data.'''
 
-    noisy_data = []
-
-    for entry in data:
-        noisy_data.append(entry + np.random.normal(0, noise_level, entry.shape))
-
+    noisy_data = [entry + np.random.normal(0, noise_level, entry.shape) for entry in data]
     return noisy_data
+
 
 def prepare_tensor(data):
     '''Makes tensors out of lists.'''
     
-    tensor_data = []
-    
     if len(data) == 1:
         return torch.tensor(data)
+    return [torch.tensor(entry) for entry in data]
 
-    for entry in data:
-        tensor_data.append(torch.tensor(entry))
-        
-    return tensor_data
 
 def create_data():
     '''For each time step and point space in domain, creates input and output.'''
 
-    input = []
-    output = []
+    input, output = [], []
 
     for t in np.arange(0, T + dt, dt):
         for x in np.linspace(0, L, int(L/dx) + 1):
@@ -61,18 +51,33 @@ def create_data():
 
                 input.append([x, y, t])
 
-                u = np.exp(-2*visc * wave_number**2 * t) * np.sin(wave_number * x) * np.cos(wave_number * y)
-                v = -1 * np.exp(-2*visc * wave_number**2 * t) * np.cos(wave_number * x) * np.sin(wave_number * y)
-                p = 0.25 * np.exp(-4 * visc * wave_number**2 * t) * (np.cos(2 * wave_number * x) + np.cos(2 * wave_number * y))
+                u = (
+                    np.exp(-2*visc * wave_number**2 * t) 
+                    * np.sin(wave_number * x) 
+                    * np.cos(wave_number * y)
+                )
+
+                v = (
+                    -1 * np.exp(-2*visc * wave_number**2 * t) 
+                    * np.cos(wave_number * x) 
+                    * np.sin(wave_number * y)
+                )
+
+                p = (
+                    0.25 * np.exp(-4 * visc * wave_number**2 * t) 
+                    * (np.cos(2 * wave_number * x) 
+                    + np.cos(2 * wave_number * y))
+                )
 
                 output.append([u, v, p])
 
     return input, output
 
+
 def create_training_data(x_test, y_test):
     '''From full dataset, samples for training and validation set.'''
 
-    #Making sure that selection is without replacement
+    # Making sure that selection is without replacement
     indices = random.sample(range(1, len(x_test)), 6000)
 
     random_indices = sorted(indices[:5000])
@@ -88,16 +93,16 @@ def create_training_data(x_test, y_test):
         x_val.append(x_test[ind])
         y_val.append(y_test[ind])
 
-    #Removes training and validation data from test set
+    # Removes training and validation data from test set
     for i in sorted(indices, reverse=True):
         del x_test[i]
         del y_test[i]
 
-
     return x_train, y_train, x_val, y_val, x_test, y_test
 
+
 def get_data():
-    '''Loads data, if it exists, otherwise creates.'''
+    '''Loads data, if it exists, otherwise creates a new one.'''
 
     if os.path.isfile("./data/all_data.npy"):
         print("Loaded data.")
@@ -106,11 +111,13 @@ def get_data():
 
     x_test, y_test = create_data()
     x_train, y_train, x_val, y_val, x_test, y_test = create_training_data(x_test, y_test)
-    pde_x = x_train #Uses same data for physics loss as for data loss
+    pde_x = x_train # Uses same data for physics loss as for data loss
 
     all_data = np.array([x_test, y_test, x_train, y_train, x_val, y_val, pde_x], dtype=object)
 
+    os.makedirs("./data", exist_ok=True)
     np.save("./data/all_data.npy", all_data)
 
     print("Created data.")
+
     return all_data
