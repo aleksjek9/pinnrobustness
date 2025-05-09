@@ -294,6 +294,7 @@ class Model(nn.Module):
                 print("New weight:", self.weight)
         
         self.network.load_state_dict(torch.load("best.hdf5"))
+        self.patience = 0
 
         # Train with L-BFGS
         self.cc = cc
