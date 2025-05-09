@@ -1,14 +1,19 @@
-from fem import tgv_vortex
+
 import numpy as np
-from scipy.optimize import minimize
 import importlib
 import time
+from scipy.optimize import minimize
+from fem import tgv_vortex
 
-class optimizer:
-    #Algorithm which solves inverse problem using FEM
+
+class Optimizer:
+    """
+    Algorithm which solves inverse problem using FEM.
+    """
+
 
     def __init__(self, data):
-        #Initializes optimizer
+        # Initializes optimizer
 
         self.x_test = np.array(data[0])
         self.y_test = np.array(data[1])
@@ -20,7 +25,7 @@ class optimizer:
         self.viscosity = [0]
 
     def error(self, viscosity):
-        #Return error on training set
+        """Return error on training set."""
 
         predictions = tgv_vortex(viscosity, slsqp=self.x_train)
         print(predictions[0:10])
@@ -32,34 +37,43 @@ class optimizer:
         return rmse - float((self.l2_lambda*self.viscosity[0])**2)
 
     def validation(self):
-        #Return error on validation set
+        """Return error on validation set."""
 
-        if (self.viscosity == 0) or (self.l2_lambda == -1):
+        if self.viscosity == 0 or self.l2_lambda == -1:
             return "You have to set viscosity and l2 lambda values before validation."
-
+        
         predictions = tgv_vortex(self.viscosity, self.x_val)
         rmse = float((self.l2_lambda*self.viscosity[0])**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:2] - self.y_val[~np.isclose(self.x_val[:, 2], 0.0), 0:2]) ** 2))
         pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 2] - self.y_val[~np.isclose(self.x_val[:, 2], 0.0), 2]) ** 2))
-
         return rmse - float((self.l2_lambda*self.viscosity[0])**2)
 
     def test(self):
-        #Returns test set error
+        """Returns test set error."""
 
-        if (self.viscosity == 0) or (self.l2_lambda == -1):
+        if self.viscosity == 0 or self.l2_lambda == -1:
             return "You have to set viscosity and l2 lambda values before test."
 
+        mask = ~np.isclose(self.x_test[:, 2], 0.0)
         predictions = tgv_vortex(self.viscosity, self.x_test)
-        rmse = np.sqrt(np.mean((np.array(predictions)[:, 0:2] - self.y_test[~np.isclose(self.x_test[:, 2], 0.0), 0:2]) ** 2))
-        pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 2] - self.y_test[~np.isclose(self.x_test[:, 2], 0.0), 2]) ** 2))
-        
+        rmse = np.sqrt(
+            np.mean((np.array(predictions)[:, 0:2] - self.y_test[mask, 0:2]) ** 2)
+        )
+
+        pressure_rmse = np.sqrt(
+            np.mean((np.array(predictions)[:, 2] - self.y_test[mask, 2]) ** 2)
+        )
+
         return rmse
 
     def run(self):
-        #Solves the inverse problem
+        """Solves the inverse problem using Sequential Least Squares Programming optimizer."""
 
-        options = {"ftol": 1e-16, "maxiter": 100, "disp": True}
-
+        options = {
+            "ftol": 1e-16, 
+            "maxiter": 100, 
+            "disp": True
+        }
+        
         result = minimize(
             fun=self.error,
             x0=[5],
