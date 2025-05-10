@@ -204,7 +204,7 @@ class Model(nn.Module):
         Loading is disabled by default in train_model().
         """
 
-        if self.val_loss is None or self.val_loss < val_loss:
+        if self.val_loss is None or self.val_loss > val_loss:
             self.patience = 0
             self.val_loss = val_loss
             torch.save(self.network.state_dict(), "best.hdf5")
