@@ -79,7 +79,7 @@ class Model(nn.Module):
         network.append(nn.Tanh().double())
         network.append(nn.Linear(10, 10).double())
         network.append(nn.Tanh().double())
-        network.append(nn.Linear(20, 2).double())
+        network.append(nn.Linear(10, 2).double())
 
         return nn.Sequential(*network)
 
