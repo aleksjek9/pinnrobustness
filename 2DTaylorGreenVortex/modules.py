@@ -209,7 +209,7 @@ class Model(nn.Module):
             self.val_loss = val_loss
             torch.save(self.network.state_dict(), "best.hdf5")
         else:
-            patience += 1
+            self.patience += 1
 
     def loss_fn(self, cc, val, pde, lbfgs=False):
         """Calculates the full loss function."""
@@ -257,7 +257,7 @@ class Model(nn.Module):
             loss.backward()
             self.adam_optimizer.step()
 
-            if patience > 60000:
+            if self.patience > 60000:
                 iter = iterations
 
             """Gradient pathologies adaptive weight from https://arxiv.org/abs/2001.04536."""
