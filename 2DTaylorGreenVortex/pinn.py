@@ -17,7 +17,7 @@ torch.cuda.manual_seed_all(seed)
 The amount of times to run each experiment
 in order to get a standard deviation.
 """
-samples = 30
+samples = 5
 device = "cuda"
 
 def PINN_experiment(data, noise, verbose=True, rerun=False):
