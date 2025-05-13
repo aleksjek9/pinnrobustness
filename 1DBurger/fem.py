@@ -62,6 +62,7 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indic
     gridSize = 255
     dt = 0.01
     t = 0.0
+    index = 1
     t_final = 0.99
     result = []
 
@@ -110,7 +111,7 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indic
 
     # Solving and saving for each time step
     while t < t_final:
-        t = round(t, 2)
+      
         solve(
             F == 0, 
             cur_vel, 
@@ -119,11 +120,14 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indic
             solver_parameters={'newton_solver':  {'maximum_iterations': 50}},
         )
 
-        if gradient_mode and (int((t*100)+1) not in excluded_indices):
+        print(index, excluded_indices)
+
+        if gradient_mode and (index not in excluded_indices):
             result.append(cur_vel.copy(deepcopy=True))
-        elif int((t*100)+1) not in excluded_indices:
+        elif index not in excluded_indices:
             result.append(cur_vel.vector().get_local(dof_to_vertex_map(velocity)))
 
+        index += 1
         t = t + float(dt)
         old_vel.assign(cur_vel)
 
