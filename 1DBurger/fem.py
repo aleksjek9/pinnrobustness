@@ -120,8 +120,6 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indic
             solver_parameters={'newton_solver':  {'maximum_iterations': 50}},
         )
 
-        print(index, excluded_indices)
-
         if gradient_mode and (index not in excluded_indices):
             result.append(cur_vel.copy(deepcopy=True))
         elif index not in excluded_indices:
