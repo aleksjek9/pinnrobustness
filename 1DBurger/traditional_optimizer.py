@@ -54,6 +54,31 @@ class Optimizer:
         )
         return error
 
+    
+    def error_include_val(self, viscosity):
+        """Solves 1D Burgers. Then calculates and returns the error on training set. 
+        Uses validation set for training as well."""
+
+        try:
+            results, control_variable, solution_comparison, map, domain = self.burgers_1d(
+                viscosity, self.initial_condition, gradient_mode=True
+            )
+        except:
+            return np.nan
+
+        indexes = self.indexes + self.val_indexes
+
+        error, self.gradient = self.get_gradient(
+            self.l2_lambda, 
+            indexes, 
+            results, 
+            self.y_train, 
+            control_variable, 
+            solution_comparison, 
+            map
+        )
+        return error
+
 
     def validation(self):
         """Returns validation set error."""
@@ -85,7 +110,8 @@ class Optimizer:
         }
         
         result = minimize(
-            fun=self.error,
+            #fun=self.error,
+            fun=self.error_include_val,
             x0=[5],
             method="SLSQP",
             jac=self.grad,
