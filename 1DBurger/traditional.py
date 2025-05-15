@@ -101,7 +101,7 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
                 parameter_error.append(noise_parameter_error)
                 break #For noise_level = 0
 
-    all_results = [rmse, estimated_parameter, parameter_error]
+    all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object)]
     np.save("./results/traditional_results.npy", all_results)
     print("Traditional test complete.")
 
