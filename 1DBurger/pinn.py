@@ -28,7 +28,6 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
         return all_data
 
     data = prepare_tensor(data)
-    x_test, y_test, x_train, y_train, x_bc, y_bc, x_ic, y_ic, x_val, y_val, pde_x, _ = data
 
     rmse = []
     estimated_parameter = []
