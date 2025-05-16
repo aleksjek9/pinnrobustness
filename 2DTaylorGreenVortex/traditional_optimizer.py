@@ -36,6 +36,25 @@ class Optimizer:
 
         return rmse - float((self.l2_lambda*self.viscosity[0])**2)
 
+    def error_include_val(self, viscosity):
+        """Return error on training set."""
+
+        x_train_val = np.concatenate((self.x_train, self.x_val))
+        y_train_val = np.concatenate((self.y_train, self.y_val))
+
+        sort_by_time = np.argsort(x_train_val[:, 2])
+        x_train_val = x_train_val[sort_by_time]
+        y_train_val = y_train_val[sort_by_time]
+
+        predictions = np.array(tgv_vortex(viscosity, slsqp=x_train_val))
+        print(predictions[::1000])
+        print(y_train_val[~np.isclose(x_train_val[:, 2], 0.0)][::1000])
+        rmse = float((self.l2_lambda*viscosity)**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:2] - y_train_val[~np.isclose(x_train_val[:, 2], 0.0), 0:2]) ** 2))
+        pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 2] - y_train_val[~np.isclose(x_train_val[:, 2], 0.0), 2]) ** 2))
+        print(rmse)
+
+        return rmse - float((self.l2_lambda*self.viscosity[0])**2)
+
     def validation(self):
         """Return error on validation set."""
 
@@ -75,7 +94,7 @@ class Optimizer:
         }
         
         result = minimize(
-            fun=self.error,
+            fun=self.error_include_val,
             x0=[5],
             method="SLSQP",
             jac="3-point",

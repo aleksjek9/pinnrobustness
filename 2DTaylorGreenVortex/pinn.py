@@ -3,7 +3,7 @@ import time
 import secrets
 import numpy as np
 import torch
-from data import prepare_tensor,add_noise_pinn
+from data import prepare_tensor,add_noise
 from fem import tgv_vortex
 from modules import Model, gradient
 from sklearn.metrics import root_mean_squared_error 
@@ -48,11 +48,13 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
         for sample in range(samples):
             # Add noise to data
             x_test, y_test, x_train, y_train, x_val, y_val, pde_x = data
-            y_train = add_noise_pinn([y_train], noise_level=noise_level)
+            y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
+            y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
+
             x_train = x_train.to(device)
-            y_train = y_train.to(device)
+            y_train_noise = y_train.to(device)
             x_val = x_val.to(device)
-            y_val = y_val.to(device)
+            y_val_noise = y_val.to(device)
             x_test = x_test.to(device)
             y_test = y_test.to(device)
             pde_x = pde_x.to(device)
@@ -61,7 +63,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             PINN = Model(name=str(noise_level))
             PINN.to(device)
             PINN.train_model(
-                            [x_train, y_train], [x_val, y_val], 
+                            [x_train, y_train_noise], [x_val, y_val_noise], 
                             pde_x, iterations=200000
             )
             viscosity = torch.nn.functional.softplus(PINN.visc).item() + 0.00314159265

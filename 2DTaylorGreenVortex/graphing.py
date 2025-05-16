@@ -51,7 +51,7 @@ def graph_data(result):
 
     plt.plot(noise_levels, trad_means["rmse"], label="FEM/SLSQP", color="violet")
     plt.scatter(noise_levels, trad_means["rmse"], color="violet")
-    # plt.errorbar(noise_levels, trad_means["rmse"], yerr=trad_stdevs["rmse"], fmt='o', color="black",capsize=5)
+    plt.errorbar(noise_levels, trad_means["rmse"], yerr=trad_stdevs["rmse"], fmt='o', color="black",capsize=5)
     
     
     
@@ -83,6 +83,7 @@ def graph_data(result):
 
     plt.plot(noise_levels, trad_means["parameter"], label="FEM/SLSQP", color="violet")
     plt.scatter(noise_levels, trad_means["parameter"], color="violet")
+    plt.errorbar(noise_levels, trad_means["parameter"], yerr=trad_stdevs["rmse"], fmt='o', color="black",capsize=5)
 
     plt.plot(noise_levels, [0.1] * len(noise_levels), label="Ground truth", color="green")
 

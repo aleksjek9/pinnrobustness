@@ -19,12 +19,6 @@ T = 2.5
 dx = 0.05
 dy = 0.05
 
-def add_noise_pinn(data, noise_level=0):
-    '''Adds noise to data for the PINN experiment.'''
-
-    noisy_data = [entry + np.random.normal(0, noise_level, entry.shape) for entry in data]
-    return noisy_data[0]
-
 
 def add_noise(data, noise_level=0):
     '''Adds noise to data.'''

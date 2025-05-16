@@ -6,7 +6,7 @@ from data import add_noise
 from bayes_opt import BayesianOptimization
 
 """How many times to run each experiment."""
-samples = 1
+samples = 5
 
 
 def single_experiment(l2_lambda, parameter_optimizer):
@@ -93,17 +93,14 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
             print("Estimated parameter:" + str(noise_estimated_parameter[-1]))
             print("Test set, RMSE: " + str(noise_rmse[-1]))
             
-            if sample == samples - 1:
+            if sample == samples - 1 or noise_level == 0:
                 # After the last sample, we have to save everything
                 rmse.append(noise_rmse)
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
+                break #For noise_level = 0
 
-                noise_estimated_parameter = []
-                noise_rmse = []
-                noise_parameter_error = []
-
-    all_results = [rmse, estimated_parameter, parameter_error]
+    all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object)]
     np.save("./results/traditional_results.npy", all_results)
     print("Traditional test complete.")
 
