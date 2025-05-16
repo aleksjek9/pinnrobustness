@@ -46,7 +46,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             y_train_noise, y_val_noise = add_noise([y_train, y_val], noise_level=noise_level)
 
             # Train model
-            PINN = Model()
+            PINN = Model(name=str(noise_level))
             PINN.train_model(
                             [x_bc, y_bc], [x_ic, y_ic], 
                             [x_train, y_train_noise], [x_val, y_val_noise], 

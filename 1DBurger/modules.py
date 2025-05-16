@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import time
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
@@ -8,7 +9,7 @@ import torch.optim as optim
 
 class Model(nn.Module):
 
-    def __init__(self):
+    def __init__(self, name):
         """Initialize the neural network model."""
         super().__init__()
 
@@ -19,7 +20,15 @@ class Model(nn.Module):
         self.cc = None
         self.ev = None
         self.pde = None
+        self.minutes = []
+        self.phy_history = []
+        self.data_history = []
+        self.val_history = []
+        self.parameter_history = []
+        self.name = name
         self.weight = 1
+        self.epoch = 0
+        self.start_time = time.time()
         self.visc = nn.Parameter(data=torch.tensor([math.log10(5)/math.log10(10)]))
         self.network.register_parameter("visc", self.visc)
 
@@ -74,6 +83,47 @@ class Model(nn.Module):
 
         output = self.forward(data[0])
         return torch.mean((output - data[1]) ** 2)
+
+    def save_history(self, elapsed_minutes, phy_loss, cc_loss, val_loss, visc):
+        """
+        Saves various loss histories that can be
+        plotted later for better understanding.
+        """
+
+        self.minutes.append(elapsed_minutes)
+        self.phy_history.append(phy_loss)
+        self.data_history.append(cc_loss)
+        self.parameter_history.append(visc)
+        self.val_history.append(val_loss)
+
+        if self.epoch in list(range(1, 10000, 100)):
+
+            with open('results/minutes_' + self.name + '.txt', 'a') as f:
+                for item in self.minutes:
+                    f.write(f"{item}, ")
+
+            with open('results/phy_history_' + self.name + '.txt', 'a') as f:
+                for item in self.phy_history:
+                    f.write(f"{item}, ")
+
+            with open('results/data_history_' + self.name + '.txt', 'a') as f:
+                for item in self.data_history:
+                    f.write(f"{item}, ")
+
+            with open('results/val_history_' + self.name + '.txt', 'a') as f:
+                for item in self.val_history:
+                    f.write(f"{item}, ")
+
+            with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
+                for item in self.parameter_history:
+                    f.write(f"{item}, ")
+            
+            # Empty lists until next writing
+            self.minutes = []
+            self.phy_history = []
+            self.data_history = []
+            self.val_history = []
+            self.parameter_history = []
 
 
     def phy_loss(self, pde):
@@ -135,6 +185,20 @@ class Model(nn.Module):
         val_loss = self.mse_loss(val)
 
         total_loss = (bc_loss + ic_loss + cc_loss) * self.weight + phy_loss 
+
+        elapsed_time = time.time() - self.start_time
+        elapsed_minutes = elapsed_time / 60
+
+        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", cc_loss.item(), " Parameter: ", 10**self.visc.item())
+
+        self.save_history(
+            elapsed_minutes, 
+            phy_loss.item(), 
+            cc_loss.item(), 
+            val_loss.item(), 
+            10**self.visc.item()
+        )
+
         self.save_if_best(val_loss)
         return total_loss
 
@@ -142,6 +206,7 @@ class Model(nn.Module):
     def closure(self):
         """Helper function necessary for L-BFGS."""
 
+        self.epoch += 1
         self.lbfgs_optimizer.zero_grad()
         loss = self.loss_fn(self.bc, self.ic, self.cc, self.ev, self.pde)
         loss.backward()
@@ -152,6 +217,7 @@ class Model(nn.Module):
 
         # Training with ADAM
         for iter in range(iterations):
+            self.epoch += 1
             loss = self.loss_fn(bc, ic, cc, val, pde)
             self.adam_optimizer.zero_grad()
             loss.backward()
