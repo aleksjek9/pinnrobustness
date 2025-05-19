@@ -45,6 +45,7 @@ class Model(nn.Module):
         self.data_history = []
         self.val_history = []
         self.parameter_history = []
+        self.weights_history = []
         self.name = name
         self.cc = None
         self.ev = None
@@ -149,6 +150,10 @@ class Model(nn.Module):
             with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
                 for item in self.parameter_history:
                     f.write(f"{item}, ")
+
+            with open('results/weights_history_' + self.name + '.txt', 'a') as f:
+                for item in self.weights_history:
+                    f.write(f"{item}, ")
             
             # Empty lists until next writing
             self.minutes = []
@@ -156,6 +161,7 @@ class Model(nn.Module):
             self.data_history = []
             self.val_history = []
             self.parameter_history = []
+            self.weights_history = []
 
     def phy_loss(self, pde):
         """
@@ -290,6 +296,7 @@ class Model(nn.Module):
                 mean_grad = mean_gradient.item()
 
                 # Calculate the new weight using alpha=0.9 |note that 1.0 - alpha = 0.1
+                self.weights_history.append(self.weight)
                 self.weight = 0.1 * self.weight + 0.9 * (max_grad / mean_grad)
                 print("New weight:", self.weight)
         
