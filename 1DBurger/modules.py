@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.autograd as autograd
 import torch.optim as optim
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 
 class Model(nn.Module):
 
@@ -37,7 +39,7 @@ class Model(nn.Module):
         self.lbfgs_optimizer = optim.LBFGS(
             self.network.parameters(),
             lr=1,
-            max_iter=2000,
+            max_iter=4000,
             max_eval=None,
             tolerance_grad=1e-16,
             tolerance_change=1e-16,
@@ -173,6 +175,7 @@ class Model(nn.Module):
         if self.val_loss is None or self.val_loss > val_loss:
             self.val_loss = val_loss
             torch.save(self.network.state_dict(), "best.hdf5")
+            print("Saved")
 
 
     def loss_fn(self, bc, ic, cc, val, pde):
@@ -184,17 +187,21 @@ class Model(nn.Module):
         phy_loss = self.phy_loss(pde)
         val_loss = self.mse_loss(val)
 
-        total_loss = (bc_loss + ic_loss + cc_loss) * self.weight + phy_loss 
+        data_loss = bc_loss + ic_loss + cc_loss
+
+        #value = 1-(self.epoch/9000)
+        #total_loss = max(data_loss, (data_loss * self.weight * value)) + phy_loss 
+        total_loss = data_loss * self.weight + phy_loss
 
         elapsed_time = time.time() - self.start_time
         elapsed_minutes = elapsed_time / 60
 
-        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", cc_loss.item(), " Parameter: ", 10**self.visc.item())
+        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", data_loss.item(), " Parameter: ", 10**self.visc.item())
 
         self.save_history(
             elapsed_minutes, 
             phy_loss.item(), 
-            cc_loss.item(), 
+            data_loss.item(), 
             val_loss.item(), 
             10**self.visc.item()
         )
@@ -215,6 +222,17 @@ class Model(nn.Module):
     def train_model(self, bc, ic, cc, val, pde, iterations):
         """Trains the model with both optimizers."""
 
+        bc[0] = bc[0].to(device)
+        bc[1] = bc[1].to(device)
+        ic[0] = ic[0].to(device)
+        ic[1] = ic[1].to(device)
+        cc[0] = cc[0].to(device)
+        cc[1] = cc[1].to(device)
+        cc[0] = cc[0].to(device)
+        val[1] = val[1].to(device)
+        val[0] = val[0].to(device)
+        pde = pde.to(device)
+
         # Training with ADAM
         for iter in range(iterations):
             self.epoch += 1
@@ -224,7 +242,7 @@ class Model(nn.Module):
             self.adam_optimizer.step()
 
             """Gradient pathologies adaptive weight from https://arxiv.org/abs/2001.04536."""
-            if iter % 10 == 0:
+            '''if iter % 10 == 0:
                 # Get max gradient of physics loss
                 phy_loss = self.phy_loss(pde)
                 self.adam_optimizer.zero_grad()
@@ -254,7 +272,7 @@ class Model(nn.Module):
 
                 # Calculate the new weight using alpha=0.9 | note that 1.0 - alpha = 0.1
                 self.weight = 0.1 * self.weight + 0.9 * (max_grad / mean_grad)
-                # print("New weight:", self.weight)
+                print("New weight:", self.weight)'''
                 
         self.network.load_state_dict(torch.load("best.hdf5"))
 

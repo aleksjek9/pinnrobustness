@@ -1,4 +1,5 @@
 import os
+import torch
 import numpy as np
 from modules import Model
 from data import prepare_tensor, add_noise
@@ -11,6 +12,7 @@ in order to get a standard deviation.
 """
 samples = 30
 test_set_size = 22272
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def PINN_experiment(data, noise, verbose=True, rerun=False):
     """
@@ -42,11 +44,12 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
 
         for sample in range(samples):
             # Add noise to data  
-            x_test, y_test, x_train, y_train, x_bc, y_bc, x_ic, y_ic, x_val, y_val, pde_x, random_indices = data
+            x_test, y_test, x_train, y_train, x_bc, y_bc, x_ic, y_ic, x_val, y_val, pde_x, random_indices = prepare_tensor(data)
             y_train_noise, y_val_noise = add_noise([y_train, y_val], noise_level=noise_level)
 
             # Train model
             PINN = Model(name=str(noise_level))
+            PINN.to(device)
             PINN.train_model(
                             [x_bc, y_bc], [x_ic, y_ic], 
                             [x_train, y_train_noise], [x_val, y_val_noise], 
@@ -55,8 +58,8 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             viscosity = 10 ** PINN.visc.item()
 
             # Save RMSE on test set
-            pred = PINN.forward(x_test)
-            error = root_mean_squared_error(pred.detach(), y_test.reshape(test_set_size, 1))
+            pred = PINN.forward(x_test.to(device))
+            error = root_mean_squared_error(pred.detach().cpu().numpy(), y_test.reshape(test_set_size, 1))
             noise_rmse.append(error)
 
             # Save RMSE using estimated parameters with FEM

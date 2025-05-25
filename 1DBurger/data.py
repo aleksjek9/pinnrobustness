@@ -42,7 +42,7 @@ def create_training_data(x_test, y_test):
     """Takes 10 time slices to create training data
     and 2 time slices to create validation data."""
 
-    random_indices = random.sample(range(100)[1:], 12)
+    random_indices = random.sample(range(99)[1:], 12)
     slice_size=256
     x_train, y_train, x_val, y_val = [], [], [], []
 
@@ -57,8 +57,6 @@ def create_training_data(x_test, y_test):
     for ind in sorted(random_indices, reverse=True):
         del x_test[ind * slice_size : (ind + 1) * slice_size]
         del y_test[ind * slice_size : (ind + 1) * slice_size]
-
-    print(len(x_test), len(y_test))
 
     return x_test, y_test, x_train, y_train, x_val, y_val, random_indices
 

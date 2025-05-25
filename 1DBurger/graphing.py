@@ -47,7 +47,7 @@ def graph_data(result):
     plt.errorbar(
                 noise_levels, pinn_means["rmse"], 
                 yerr=pinn_stdevs["rmse"], fmt='o', 
-                color="black", capsize=5
+                color="blue", capsize=5
     )
 
     plt.plot(noise_levels, trad_means["rmse"], label="FEM/SLSQP", color="violet")
@@ -55,7 +55,7 @@ def graph_data(result):
     plt.errorbar(
                    noise_levels, trad_means["rmse"], 
                    yerr=trad_stdevs["rmse"], fmt='o', 
-                   color="black", capsize=5
+                   color="violet", capsize=5
     )
 
     plt.plot(noise_levels, pinn_means["fem_error"], label="PINN/FEM", color="orange")
@@ -63,7 +63,7 @@ def graph_data(result):
     plt.errorbar(
                 noise_levels, pinn_means["fem_error"], 
                 yerr=pinn_stdevs["fem_error"], fmt='o', 
-                color="black", capsize=5
+                color="orange", capsize=5
     )
 
     plt.xlabel('Sigma')
@@ -80,7 +80,7 @@ def graph_data(result):
     plt.errorbar(
                 noise_levels, pinn_means["parameter"], 
                 yerr=pinn_stdevs["parameter"], fmt='o', 
-                color="black", capsize=5
+                color="blue", capsize=5
     )
 
     plt.plot(noise_levels, trad_means["parameter"], label="FEM/SLSQP", color="violet")
@@ -88,7 +88,7 @@ def graph_data(result):
     plt.errorbar(
                    noise_levels, trad_means["parameter"], 
                    yerr=trad_stdevs["parameter"], fmt='o', 
-                   color="black", capsize=5
+                   color="violet", capsize=5
     )
 
     plt.plot(noise_levels, [0.01/np.pi] * 9, label="Ground truth", color="green")
