@@ -44,20 +44,20 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
         noise_rmse = []
         noise_parameter_error = []
 
-        # Add noise to data
-        x_test, y_test, x_train, y_train, x_val, y_val, pde_x = data
-        y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
-        y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
-
-        # Bayesian optimization
-        pbounds = {'x': (0, 20000)}
-        parameter_optimizer = Optimizer([x_test, y_test, x_train, y_train_noise, y_val_noise, x_val])
-
         # Runs each experiment multiple times
         for sample in range(samples):
 
+            # Add noise to data
+            x_test, y_test, x_train, y_train, x_val, y_val, pde_x = data
+            y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
+            y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
+            parameter_optimizer = Optimizer([x_test, y_test, x_train, y_train_noise, y_val_noise, x_val])
+
             # If L2 lambda is not provided, Bayesian search calculates the best L2 lambda instead
             if len(lambdas) == 0:
+
+                # Bayesian optimization setting
+                pbounds = {'x': (0, 20000)}
 
                 bayesian_optimizer = BayesianOptimization(
                     f=lambda x: single_experiment(x, parameter_optimizer),
