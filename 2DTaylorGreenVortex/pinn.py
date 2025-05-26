@@ -52,9 +52,9 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
 
             x_train = x_train.to(device)
-            y_train_noise = y_train_noise.to(device)
+            y_train_noise = torch.from_numpy(y_train_noise).to(device)
             x_val = x_val.to(device)
-            y_val_noise = y_val_noise.to(device)
+            y_val_noise = torch.from_numpy(y_val_noise).to(device)
             x_test = x_test.to(device)
             y_test = y_test.to(device)
             pde_x = pde_x.to(device)
