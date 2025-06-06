@@ -35,7 +35,7 @@ def main():
     results.append(pinn_result)
     results.append(traditional_experiment(data, noise_levels))
 
-    graph_data(results)
+    graph_data(results) if rank == 0 else None
 
 
 if __name__ == "__main__":
