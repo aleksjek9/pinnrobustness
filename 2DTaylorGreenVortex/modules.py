@@ -74,13 +74,25 @@ class Model(nn.Module):
 
         network = []
 
-        network.append(nn.Linear(3, 10).double())
+        network.append(nn.Linear(3, 20).double())
         network.append(nn.Tanh().double())
-        network.append(nn.Linear(10, 10).double())
+        network.append(nn.Linear(20, 20).double())
         network.append(nn.Tanh().double())
-        network.append(nn.Linear(10, 10).double())
+        network.append(nn.Linear(20, 20).double())
         network.append(nn.Tanh().double())
-        network.append(nn.Linear(10, 2).double())
+        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Tanh().double())
+        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Tanh().double())
+        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Tanh().double())
+        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Tanh().double())
+        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Tanh().double())
+        network.append(nn.Linear(20, 20).double())
+        network.append(nn.Tanh().double())
+        network.append(nn.Linear(20, 2).double())
 
         return nn.Sequential(*network)
 
@@ -300,7 +312,7 @@ class Model(nn.Module):
                 self.weight = 0.1 * self.weight + 0.9 * (max_grad / mean_grad)
                 print("New weight:", self.weight)
         
-        self.network.load_state_dict(torch.load("best.hdf5"))
+        #self.network.load_state_dict(torch.load("best.hdf5"))
         self.patience = 0
 
         # Train with L-BFGS
@@ -308,4 +320,4 @@ class Model(nn.Module):
         self.ev = val
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
-        self.network.load_state_dict(torch.load("best.hdf5"))
+        #self.network.load_state_dict(torch.load("best.hdf5"))
