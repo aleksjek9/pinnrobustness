@@ -4,6 +4,11 @@ from sklearn.metrics import root_mean_squared_error
 from traditional_optimizer import Optimizer
 from data import add_noise
 from bayes_opt import BayesianOptimization
+from mpi4py import MPI
+
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
 """How many times to run each experiment."""
 samples = 5
@@ -50,7 +55,15 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
             # Add noise to data
             x_test, y_test, x_train, y_train, x_val, y_val, pde_x = data
             y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
-            y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
+
+            if rank == 0:
+                y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
+            else:
+                y_train_noise, y_val_noise = None, None
+            
+            y_train_noise = comm.bcast(y_train_noise, root=0)  # Broadcast noise to other ranks
+            y_val_noise = comm.bcast(y_val_noise, root=0)      # Broadcast noise to other ranks
+
             parameter_optimizer = Optimizer([x_test, y_test, x_train, y_train_noise, y_val_noise, x_val])
 
             # If L2 lambda is not provided, Bayesian search calculates the best L2 lambda instead
