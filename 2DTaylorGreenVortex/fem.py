@@ -3,7 +3,12 @@ import numpy as np
 from fenics import *
 from tqdm import *
 import matplotlib.pyplot as plt
+from mpi4py import MPI
 
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
 set_log_level(1000)
 nx, ny = 64, 64
@@ -12,6 +17,7 @@ dt = 0.01
 max_step = 250
 time_scale = 100
 single_length = 3969 # data points for each time slice
+
 
 class PeriodicBoundary(SubDomain):
     """Periodic boundary condition."""
@@ -116,6 +122,9 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
     }
     }
 
+    # For recording local predictions
+    local_predictions = []
+
     for t in tqdm(range(max_step)):
 
         solve(
@@ -140,11 +149,19 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
 
         # Record relevant time steps 
         if len(slsqp) > 0:
-            # For FEM/SLSQP
-            for point in slsqp[np.isclose(slsqp[:, 2] * time_scale, t+1), 0:2]:
-                x_vel, y_vel = u_next(point[0], point[1])
-                pressure = p_next(point[0], point[1]) - mean_pressure
-                predictions.append([x_vel, y_vel, pressure])
+            # For parallellized FEM/SLSQP
+            time_filtered = [
+                (idx, point) for idx, point in enumerate(slsqp)
+                if np.isclose(point[2] * time_scale, t + 1)
+            ] 
+            for idx, point in time_filtered:
+                x, y = point[0], point[1]
+                try:
+                    x_vel, y_vel = u_next(x, y)
+                    p_val = p_next(x, y) - mean_pressure
+                    local_predictions.append((idx, [x_vel, y_vel, p_val]))
+                except Exception as e:
+                    print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
         elif len(pinn) > 0:
             # For FEM/PINN
             for point in pinn[np.isclose(pinn[:, 2].detach().cpu().numpy() * time_scale, t+1), 0:2]:
@@ -154,11 +171,34 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
 
         u_prev.assign(u_next)
 
+    print(f"Rank {rank} done/saved predictions", flush=True)
+
+    all_predictions = comm.gather(local_predictions, root=0) 
+
+    if rank == 0:
+        """
+        Gather all local predictions across ranks and sort them by index.
+        After removing duplicate entries, then broadcast the final result to all ranks.
+        """
+        combined = []
+
+        for item in all_predictions:
+            combined.extend(item)
+        combined.sort(key=lambda x: x[0])
+        unique = {}
+        for index, vec in combined:
+            unique[index] = vec
+        cleaned = [unique[k] for k in sorted(unique)]
+    else:
+        cleaned = None
+
+    predictions = comm.bcast(cleaned, root=0)
+
     del mesh # Memory leak debugging
     
     end_time = time.time()
     elapsed_time = end_time - start_time
 
-    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    print(f"Elapsed time: {elapsed_time:.2f} seconds") if rank==0 else None
 
     return predictions
