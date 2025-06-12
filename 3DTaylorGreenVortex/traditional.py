@@ -1,23 +1,30 @@
 import os
 import numpy as np
+from sklearn.metrics import root_mean_squared_error
 from traditional_optimizer import optimizer
 from data import add_noise
 from bayes_opt import BayesianOptimization
-from sklearn.metrics import root_mean_squared_error
+from mpi4py import MPI
+
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
 #How many times to run each experiment
-samples = 1
+samples = 5
 
 def single_experiment(l2_lambda, parameter_optimizer):
-    '''Runs a single experiment and returns validation error.
-    Helper function for finding L2 lambda.'''
+    """
+    Runs a single experiment and returns validation error.
+    Helper function for finding L2 lambda.
+    """
 
     print("l2_lambda", l2_lambda)
     parameter_optimizer.l2_lambda = l2_lambda
     result = parameter_optimizer.run()
     parameter_optimizer.viscosity = result["x"][0]
 
-    return parameter_optimizer.validation() * -1
+    return -parameter_optimizer.validation() 
 
 def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,0,0,0,0,0,0,0]):
     '''Runs the full baseline experiments.'''
@@ -33,28 +40,35 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
     estimated_parameter = []
     parameter_error = []
 
-    #Repeat experiments for every noise level
+    # Repeat experiments for every noise level
     for i, noise_level in enumerate(noise):
-
-        #Holds results for all the samples for this noise level
+        # Holds results for all the samples for this noise level
         noise_estimated_parameter = []
         noise_rmse = []
         noise_parameter_error = []
 
-        #Add noise to data
-        x_train, y_train, x_val, y_val, x_test, y_test, pde_x = data
-        y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
-        y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
+        # Runs each experiment multiple times
+        for sample in range(samples):
 
-        #Bayesian optimization
-        pbounds = {'x': (0, 20000)}
-        parameter_optimizer = optimizer([x_test, y_test, x_train, y_train_noise, y_val_noise, x_val])
+            # Add noise to data
+            x_train, y_train, x_val, y_val, x_test, y_test, pde_x = data
+            y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
 
-        #Runs each experiment multiple times
-        for sample in range(0, samples):
+            if rank == 0:
+                y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
+            else:
+                y_train_noise, y_val_noise = None, None
             
-            #If L2 lambda is not provided, can do a Bayesian search
-            if (len(lambdas) == 0):
+            y_train_noise = comm.bcast(y_train_noise, root=0)  # Broadcast noise to other ranks
+            y_val_noise = comm.bcast(y_val_noise, root=0)      # Broadcast noise to other ranks
+
+            parameter_optimizer = Optimizer([x_test, y_test, x_train, y_train_noise, y_val_noise, x_val])
+            
+            # If L2 lambda is not provided, Bayesian search calculates the best L2 lambda instead
+            if len(lambdas) == 0:
+
+                # Bayesian optimization setting
+                pbounds = {'x': (0, 20000)}
 
                 bayesian_optimizer = BayesianOptimization(
                     f=lambda x: single_experiment(x, parameter_optimizer),
@@ -63,8 +77,8 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
                 )
 
                 bayesian_optimizer.maximize(
-                init_points=5,
-                n_iter=10,
+                    init_points=5,
+                    n_iter=10,
                 )
 
                 best_l2_lambda = bayesian_optimizer.max['params']['x']
@@ -73,7 +87,7 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
                 parameter_optimizer.l2_lambda = best_l2_lambda
                 parameter_optimizer.viscosity = best_viscosity
             else:
-                #Just runs experiment to solve inverse problem using provided L2 lambda
+                # Just runs experiment to solve inverse problem using provided L2 lambda
                 parameter_optimizer.l2_lambda = lambdas[i]
                 parameter_optimizer.viscosity = parameter_optimizer.run()["x"]
                 best_viscosity = parameter_optimizer.viscosity[0]
@@ -94,15 +108,12 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
             print(noise_estimated_parameter)
             print(noise_parameter_error)
 
-            if (sample == (samples - 1)):
-                #After the last sample, we have to save everything
+            if sample == samples - 1 or noise_level == 0:
+                # After the last sample, we have to save everything
                 rmse.append(noise_rmse)
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
-
-                noise_estimated_parameter = []
-                noise_rmse = []
-                noise_parameter_error = []
+                break #For noise_level = 0
 
     all_results = [rmse, estimated_parameter, parameter_error]
     np.save("./results/traditional_results.npy", all_results)

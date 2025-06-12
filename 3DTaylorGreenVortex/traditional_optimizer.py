@@ -4,11 +4,14 @@ from scipy.optimize import minimize
 import importlib
 import time
 
-class optimizer:
-    #Algorithm which solves inverse problem using FEM
+class Optimizer:
+    """
+    Algorithm which solves inverse problem using FEM.
+    """
+
 
     def __init__(self, data):
-        #Initializes optimizer
+        # Initializes optimizer
 
         self.x_test = np.array(data[0])
         self.y_test = np.array(data[1])
@@ -27,6 +30,23 @@ class optimizer:
         print(self.y_train[0:10])
         rmse = float((self.l2_lambda*viscosity)**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:3] - self.y_train[~np.isclose(self.x_train[:, 3], 0.0), 0:3]) ** 2))
         pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 3] - self.y_train[~np.isclose(self.x_train[:, 3], 0.0), 3]) ** 2))
+        print(rmse)
+
+        return rmse - float((self.l2_lambda*self.viscosity[0])**2)
+
+    def error_include_val(self, viscosity):
+        """Return error on training set."""
+
+        x_train_val = np.concatenate((self.x_train, self.x_val))
+        y_train_val = np.concatenate((self.y_train, self.y_val))
+
+        sort_by_time = np.argsort(x_train_val[:, 2])
+        x_train_val = x_train_val[sort_by_time]
+        y_train_val = y_train_val[sort_by_time]
+
+        predictions = np.array(tgv_vortex(viscosity, slsqp=x_train_val))
+        rmse = float((self.l2_lambda*viscosity)**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:3] - y_train_val[~np.isclose(x_train_val[:, 3], 0.0), 0:3]) ** 2))
+        pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 3] - y_train_val[~np.isclose(x_train_val[:, 3], 0.0), 3]) ** 2))
         print(rmse)
 
         return rmse - float((self.l2_lambda*self.viscosity[0])**2)
@@ -61,7 +81,7 @@ class optimizer:
         options = {"ftol": 1e-16, "maxiter": 1, "disp": True}
 
         result = minimize(
-            fun=self.error,
+            fun=self.error_include_val,
             x0=[5],
             method="SLSQP",
             jac="3-point",

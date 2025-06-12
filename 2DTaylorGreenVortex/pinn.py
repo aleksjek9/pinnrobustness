@@ -112,12 +112,12 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
                 print(noise_parameter_error)
                 print(noise_fem_error)
 
-            if sample == (samples - 1):
-                # At the last sample, we have to save everything
+            if sample == samples - 1 or noise_level == 0:
+                # After the last sample, we have to save everything
                 rmse.append(noise_rmse)
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
-                fem_error.append(noise_fem_error)
+                break #For noise_level = 0
 
         with open('results/updates.txt', 'a') as f:
             f.write(f"{noise}, {rmse}, {estimated_parameter}, {parameter_error}, {fem_error} ")
