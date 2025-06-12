@@ -3,6 +3,12 @@ from tqdm import *
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+from mpi4py import MPI
+
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
 #Basic settings
 set_log_level(1000)
@@ -10,6 +16,7 @@ nx, ny, nz = 32,32,32
 Lz = 2 * np.pi
 Lxy = np.pi
 dt = 0.05
+time_scale = 100
 max_step = 50
 
 class PeriodicBoundary(SubDomain):
@@ -61,7 +68,12 @@ def calculate_normalizer(p_next, mesh):
     return mean_pressure
 
 def tgv_vortex(visc, slsqp=[], pinn=[]):
-    #Inspired by https://github.com/Ceyron/machine-learning-and-simulation/blob/main/english/fenics/lid_driven_cavity.py.
+    """Inspired by:
+    https://github.com/Ceyron/machine-learning-and-simulation/blob/main/english/fenics/lid_driven_cavity.py.
+    
+    Taylor-Green Vortex using Chorin's projection FEM formulations.
+    
+    """
     
     #Viscosity and start recording time
     print("Viscosity:", visc[0])
@@ -71,12 +83,14 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
     #Mesh and space
     mesh = BoxMesh(Point(-np.pi, -np.pi, 0.0), Point(np.pi, np.pi, 2*np.pi), nx, ny, nz)
     pbc = PeriodicBoundary()
+
     velocity = VectorFunctionSpace(mesh, "Lagrange", 2, constrained_domain=pbc)
     pressure = FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
 
     #Create all functions
     u_trial = TrialFunction(velocity)
     v_test = TestFunction(velocity)
+
     u_prev = Function(velocity)
     u_init = Expression(("sin(x[0])*cos(x[1])*cos(x[2])", 
                         "-cos(x[0])*sin(x[1])*cos(x[2])", "0"), degree=2)
@@ -121,6 +135,8 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
     }
     }
 
+    # For recording local predictions
+    local_predictions = []
 
     for t in tqdm(range(max_step)):
 
@@ -141,28 +157,61 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
             u_next,
             solver_parameters=solver_parameters1
         )
+        
+        mean_pressure = calculate_normalizer(p_next, mesh)
 
         #Record relevant time steps
         if len(slsqp) > 0:
-            #For FEM/SLSQP
-            mean_pressure = calculate_normalizer(p_next, mesh)
-            for point in slsqp[np.isclose(slsqp[:, 3] * 100, float((t+1)*5)), 0:3]:
-                x_vel, y_vel, z_vel = u_next(point[0], point[1], point[2])
-                pressure = p_next(point[0], point[1], point[2]) - mean_pressure
-                predictions.append([x_vel, y_vel, z_vel, pressure])
+            # For parallellized FEM/SLSQP
+            time_filtered = [
+                (idx, point) for idx, point in enumerate(slsqp)
+                if np.isclose(point[3] * time_scale, t + 1)
+            ] 
+            for idx, point in time_filtered:
+                x, y, z = point[0], point[1], point[2]
+                try:
+                    x_vel, y_vel, z_vel = u_next(x, y, z)
+                    p_val = p_next(x, y, z) - mean_pressure
+                    local_predictions.append((idx, [x_vel, y_vel, z_vel, p_val]))
+                except Exception as e:
+                    print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
         elif len(pinn) > 0:
             #For FEM/PINN
-            mean_pressure = calculate_normalizer(p_next, mesh)
-            for point in pinn[np.isclose(pinn[:, 3].detach().numpy() * 100, float((t+1)*5)), 0:3]:
+            for point in pinn[np.isclose(pinn[:, 3].detach().numpy() * time_scale, float((t+1)*5)), 0:3]:
                 x_vel, y_vel, z_vel = u_next(point[0], point[1], point[2])
                 pressure = p_next(point[0], point[1], point[2]) - mean_pressure
                 predictions.append([x_vel, y_vel, z_vel, pressure])
 
         u_prev.assign(u_next)
 
+    print(f"Rank {rank} done/saved predictions", flush=True)
+
+    all_predictions = comm.gather(local_predictions, root=0)
+
+    if rank == 0:
+        """
+        Gather all local predictions across ranks and sort them by index.
+        After removing duplicate entries, then broadcast the final result to all ranks.
+        """
+        combined = []
+
+        for item in all_predictions:
+            combined.extend(item)
+        combined.sort(key=lambda x: x[0])
+        unique = {}
+        for index, vec in combined:
+            unique[index] = vec
+        cleaned = [unique[k] for k in sorted(unique)]
+    else:
+        cleaned = None
+
+    predictions = comm.bcast(cleaned, root=0)
+
     del mesh #Memory leak debugging
+
     end_time = time.time()
     elapsed_time = end_time - start_time
+    
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     return predictions
