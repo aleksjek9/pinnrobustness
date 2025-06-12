@@ -78,7 +78,11 @@ class Optimizer:
     def run(self):
         #Solves the inverse problem
 
-        options = {"ftol": 1e-16, "maxiter": 1, "disp": True}
+        options = {
+            "ftol": 1e-16, 
+            "maxiter": 100, 
+            "disp": True
+        }
 
         result = minimize(
             fun=self.error_include_val,
