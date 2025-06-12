@@ -205,7 +205,8 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
     else:
         cleaned = None
 
-    predictions = comm.bcast(cleaned, root=0)
+    if len(slsqp) > 0:
+        predictions = comm.bcast(cleaned, root=0)
 
     del mesh #Memory leak debugging
 
