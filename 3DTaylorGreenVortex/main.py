@@ -34,7 +34,7 @@ def main():
     pinn_result = comm.bcast(pinn_result, root=0)
 
     results.append(pinn_result)
-    results.append(traditional_experiment(data, noise_levels))
+    #results.append(traditional_experiment(data, noise_levels))
 
     graph_data(results) if rank == 0 else None
 

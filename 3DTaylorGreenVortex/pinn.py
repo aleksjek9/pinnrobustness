@@ -64,12 +64,12 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             PINN.to(device)
             PINN.train_model(
                             [x_train, y_train_noise], [x_val, y_val_noise], 
-                            pde_x, iterations=200000
+                            pde_x, iterations=2
             )
             viscosity = torch.nn.functional.softplus(PINN.visc).item() + 0.00314159265
 
             # Save RMSE on test set
-            y_test = y_test[~np.isclose(x_test[:, 3].detach().numpy(), 0.0), 0:3]
+            y_test = y_test[~np.isclose(x_test[:, 3].detach().cpu().numpy(), 0.0), 0:3]
             x_test = x_test[x_test[:, 3] != 0.0]
             pred = PINN.forward(x_test)
             pred = pred.detach().cpu()

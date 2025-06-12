@@ -57,7 +57,7 @@ class Model(nn.Module):
         self.lbfgs_optimizer = torch.optim.LBFGS(
             self.network.parameters(),
             lr=1,
-            max_iter=50000,
+            max_iter=2,
             max_eval=None,
             tolerance_grad=1e-16,
             tolerance_change=1e-16,
@@ -97,6 +97,8 @@ class Model(nn.Module):
     def forward(self, inputs):
         #Run a forward pass through the neural network.
         
+        print(inputs)
+        
         inputs = inputs[:, 0:4]
 
         output = self.network(inputs)
@@ -110,7 +112,7 @@ class Model(nn.Module):
             return torch.tensor([0])
 
         output = self.forward(data[0])
-        data_loss = mean((output - data[1]) ** 2)
+        data_loss = torch.mean((output - data[1]) ** 2)
 
         return data_loss
 

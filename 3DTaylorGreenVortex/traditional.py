@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from sklearn.metrics import root_mean_squared_error
-from traditional_optimizer import optimizer
+from traditional_optimizer import Optimizer
 from data import add_noise
 from bayes_opt import BayesianOptimization
 from mpi4py import MPI

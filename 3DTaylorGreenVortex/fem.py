@@ -177,7 +177,7 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
                     print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
         elif len(pinn) > 0:
             #For FEM/PINN
-            for point in pinn[np.isclose(pinn[:, 3].detach().numpy() * time_scale, float((t+1)*5)), 0:3]:
+            for point in pinn[np.isclose(pinn[:, 3].detach().cpu().numpy() * time_scale, float((t+1)*5)), 0:3]:
                 x_vel, y_vel, z_vel = u_next(point[0], point[1], point[2])
                 pressure = p_next(point[0], point[1], point[2]) - mean_pressure
                 predictions.append([x_vel, y_vel, z_vel, pressure])
