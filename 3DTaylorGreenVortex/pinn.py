@@ -17,7 +17,7 @@ torch.cuda.manual_seed_all(seed)
 The amount of times to run each experiment
 in order to get a standard deviation.
 """
-samples = 1
+samples = 5
 device = "cuda"
 
 def PINN_experiment(data, noise, verbose=True, rerun=False):
@@ -64,7 +64,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             PINN.to(device)
             PINN.train_model(
                             [x_train, y_train_noise], [x_val, y_val_noise], 
-                            pde_x, iterations=2
+                            pde_x, iterations=200000
             )
             viscosity = torch.nn.functional.softplus(PINN.visc).item() + 0.00314159265
 
