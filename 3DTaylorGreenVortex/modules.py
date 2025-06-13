@@ -97,8 +97,6 @@ class Model(nn.Module):
     def forward(self, inputs):
         #Run a forward pass through the neural network.
         
-        print(inputs)
-        
         inputs = inputs[:, 0:4]
 
         output = self.network(inputs)

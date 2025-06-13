@@ -17,7 +17,7 @@ torch.cuda.manual_seed_all(seed)
 The amount of times to run each experiment
 in order to get a standard deviation.
 """
-samples = 5
+samples = 1
 device = "cuda"
 
 def PINN_experiment(data, noise, verbose=True, rerun=False):
@@ -79,7 +79,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             noise_rmse.append(error)
 
             #Save RMSE using estimated parameters with FEM
-            fem_result = prepare_tensor(tgv_vortex([viscosity], pinn=x_test))
+            fem_result = torch.stack(prepare_tensor(tgv_vortex([viscosity], pinn=x_test)))
             error = root_mean_squared_error(np.array(fem_result)[:, 0:3], y_test)
             noise_fem_error.append(error)
 

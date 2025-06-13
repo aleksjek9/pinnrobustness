@@ -47,6 +47,11 @@ def get_data():
     for x in sorted(random_indices + random_indices1, reverse=True):
         del x_test[x]
         del y_test[x]
+    
+    x_test, y_test = np.array(x_test), np.array(y_test)
+    sorted_indices = np.argsort(x_test[:, 3])
+    x_test = x_test[sorted_indices]
+    y_test = y_test[sorted_indices]
    
     #Physics data is same as training data
     pde_x = x_train
