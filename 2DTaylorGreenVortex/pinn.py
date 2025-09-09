@@ -8,10 +8,6 @@ from fem import tgv_vortex
 from modules import Model, gradient
 from sklearn.metrics import root_mean_squared_error 
 
-seed = secrets.randbelow(1_000_000)
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
 
 """
 The amount of times to run each experiment
@@ -32,7 +28,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
         return all_data
 
     data = prepare_tensor(data)
-    x_test, y_test, x_train, y_train, x_val, y_val, pde_x = data
+    x_test, y_test, x_train, y_train, x_val, y_val, pde_x, ic, bc = data
 
     rmse = []
     estimated_parameter = []
@@ -47,7 +43,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
 
         for sample in range(samples):
             # Add noise to data
-            x_test, y_test, x_train, y_train, x_val, y_val, pde_x = data
+            x_test, y_test, x_train, y_train, x_val, y_val, pde_x, ic, bc = data
             y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
             y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
 
@@ -58,19 +54,22 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             x_test = x_test.to(device)
             y_test = y_test.to(device)
             pde_x = pde_x.to(device)
+            ic = ic.to(device)
+            bc = bc.to(device)
+            
+            y_test = y_test[~np.isclose(x_test[:, 2].detach().cpu().numpy(), 0.0), 0:2]
+            x_test = x_test[x_test[:, 2] != 0]
             
             # Train model
             PINN = Model(name=str(noise_level))
             PINN.to(device)
             PINN.train_model(
                             [x_train, y_train_noise], [x_val, y_val_noise], 
-                            pde_x, iterations=200000
+                            pde_x, iterations=200000, tests=[x_test, y_test], bcic=[bc, ic]
             )
             viscosity = torch.nn.functional.softplus(PINN.visc).item() + 0.00314159265
 
             # Save RMSE on test set
-            y_test = y_test[~np.isclose(x_test[:, 2].detach().cpu().numpy(), 0.0), 0:2]
-            x_test = x_test[x_test[:, 2] != 0]
             x, y, t = x_test[:, 0], x_test[:, 1], x_test[:, 2]
             x.requires_grad, y.requires_grad, t.requires_grad = True, True, True
             x_test = torch.stack((x, y, t), dim=1)
@@ -112,12 +111,12 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
                 print(noise_parameter_error)
                 print(noise_fem_error)
 
-            if sample == samples - 1 or noise_level == 0:
-                # After the last sample, we have to save everything
+            if sample == (samples - 1):
+                # At the last sample, we have to save everything
                 rmse.append(noise_rmse)
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
-                break #For noise_level = 0
+                fem_error.append(noise_fem_error)
 
         with open('results/updates.txt', 'a') as f:
             f.write(f"{noise}, {rmse}, {estimated_parameter}, {parameter_error}, {fem_error} ")
@@ -127,3 +126,4 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
     print("PINN test complete.")
 
     return all_results
+
