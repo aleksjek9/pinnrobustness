@@ -8,10 +8,6 @@ from fem import tgv_vortex
 from modules import Model, gradient
 from sklearn.metrics import root_mean_squared_error 
 
-seed = secrets.randbelow(1_000_000)
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
 
 """
 The amount of times to run each experiment
@@ -32,7 +28,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
         return all_data
 
     data = prepare_tensor(data)
-    x_train, y_train, x_val, y_val, x_test, y_test, pde_x = data
+    x_train, y_train, x_val, y_val, x_test, y_test, pde_x, ic, bc = data
 
     rmse = []
     estimated_parameter = []
@@ -47,7 +43,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
 
         for sample in range(samples):
             # Add noise to data
-            x_train, y_train, x_val, y_val, x_test, y_test, pde_x = data
+            x_train, y_train, x_val, y_val, x_test, y_test, pde_x, ic, bc = data
             y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
             y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
 
@@ -58,19 +54,22 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             x_test = x_test.to(device)
             y_test = y_test.to(device)
             pde_x = pde_x.to(device)
+            ic = ic.to(device)
+            bc = bc.to(device)
+            
+            y_test = y_test[~np.isclose(x_test[:, 3].detach().cpu().numpy(), 0.0), 0:3]
+            x_test = x_test[x_test[:, 3] != 0.0]
             
             # Train model
             PINN = Model(name=str(noise_level))
             PINN.to(device)
             PINN.train_model(
                             [x_train, y_train_noise], [x_val, y_val_noise], 
-                            pde_x, iterations=200000
+                            pde_x, iterations=200000, tests=[x_test, y_test], icbc=[ic, bc]
             )
             viscosity = torch.nn.functional.softplus(PINN.visc).item() + 0.00314159265
 
             # Save RMSE on test set
-            y_test = y_test[~np.isclose(x_test[:, 3].detach().cpu().numpy(), 0.0), 0:3]
-            x_test = x_test[x_test[:, 3] != 0.0]
             pred = PINN.forward(x_test)
             pred = pred.detach().cpu()
             y_test = y_test.cpu()
