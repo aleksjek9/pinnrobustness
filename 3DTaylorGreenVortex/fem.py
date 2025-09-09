@@ -68,6 +68,21 @@ def calculate_normalizer(p_next, mesh):
     return mean_pressure
 
 def tgv_vortex(visc, slsqp=[], pinn=[]):
+    '''Fenics has some parallellization bugs and may crash with a lot of cores.'''
+
+    complete = False
+    
+    while not complete:
+    
+        try:
+            predictions = tgv_vortex_go(visc, slsqp, pinn)
+            complete = True
+        except:
+            print("Woops")
+            
+    return predictions
+
+def tgv_vortex_go(visc, slsqp=[], pinn=[]):
     """Inspired by:
     https://github.com/Ceyron/machine-learning-and-simulation/blob/main/english/fenics/lid_driven_cavity.py.
     
@@ -92,9 +107,28 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
     v_test = TestFunction(velocity)
 
     u_prev = Function(velocity)
-    u_init = Expression(("sin(x[0])*cos(x[1])*cos(x[2])", 
-                        "-cos(x[0])*sin(x[1])*cos(x[2])", "0"), degree=2)
-    u_prev.assign(u_init)
+
+    #More parallell safe initialization
+    all_cords = velocity.dofmap().dofs()
+    readable_cords = velocity.tabulate_dof_coordinates().reshape((-1, 3))
+    thread_cords = range(velocity.dofmap().ownership_range()[0], velocity.dofmap().ownership_range()[1])
+    
+    updated_values = np.zeros(len(thread_cords))
+    
+    for i, cord in enumerate(all_cords):
+        if cord in thread_cords:
+            x, y, z = readable_cords[i]
+            pos = cord % 3
+            if pos == 0:
+                updated_values[i] = np.sin(x) * np.cos(y) * np.cos(z)
+            elif pos == 1:
+                updated_values[i] = -np.cos(x) * np.sin(y) * np.cos(z)
+            elif pos == 2:
+                updated_values[i] = 0.0
+                
+    u_prev.vector().set_local(updated_values)
+    u_prev.vector().apply("insert")
+
     u_tent = Function(velocity)
     u_next = Function(velocity)
 
@@ -127,11 +161,11 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
 
     solver_parameters1 = {
     'linear_solver': 'gmres',
-    'preconditioner': 'ilu',
+    'preconditioner': 'amg',
     'krylov_solver': {
         'absolute_tolerance': 1e-12,
         'relative_tolerance': 1e-10,
-        'maximum_iterations': 5000,
+        'maximum_iterations': 50000,
     }
     }
 
@@ -149,7 +183,7 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
         solve(
             lhs_pressure == rhs_pressure,
             p_next,
-            solver_parameters=solver_parameters
+            solver_parameters=solver_parameters1
         )
         
         solve(
