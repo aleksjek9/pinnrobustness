@@ -7,12 +7,6 @@ import torch.nn as nn
 import torch.autograd as autograd
 import torch.optim as optim
 
-seed = secrets.randbelow(1_000_000)
-np.random.seed(seed)
-random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
-
 
 def gradient(output, input, create=True):
     '''Get gradient output with regards to input.'''
@@ -66,6 +60,14 @@ class Model(nn.Module):
         )
 
         self.val_loss = None
+        self.later_val_loss = None
+        self.later_phy_loss = None
+        self.x_test = None
+        self.y_test = None
+        self.total_history = []
+        self.ic = None
+        self.bc = None
+        
 
     def create_network(self):
         #Create the neural network itself.
@@ -114,6 +116,9 @@ class Model(nn.Module):
 
         return data_loss
 
+    def root_mean_squared_error(self, y_true, y_pred):
+        return torch.sqrt(torch.mean((y_true - y_pred) ** 2))
+
     def save_history(self, elapsed_minutes, phy_loss, cc_loss, val, visc):
         #Saves various loss histories.
 
@@ -121,6 +126,11 @@ class Model(nn.Module):
         self.phy_history.append(phy_loss)
         self.data_history.append(cc_loss)
         self.parameter_history.append(visc)
+        
+        with torch.no_grad():
+            pred = self.forward(self.x_test)
+            error = self.root_mean_squared_error(pred[:, 0:3], self.y_test[:, 0:3])
+            self.total_history.append(error)
 
         if self.epoch in list(range(1, 300002, 10000)):
 
@@ -149,6 +159,10 @@ class Model(nn.Module):
             with open('results/weights_history_' + self.name + '.txt', 'a') as f:
                 for item in self.weights_history:
                     f.write(f"{item}, ")
+                    
+            with open('results/total_history_' + self.name + '.txt', 'a') as f:
+                for item in self.total_history:
+                    f.write(f"{item}, ")
             
             # Empty lists until next writing
             self.minutes = []
@@ -157,6 +171,7 @@ class Model(nn.Module):
             self.val_history = []
             self.parameter_history = []
             self.weights_history = []
+            self.total_history = []
 
     def phy_loss(self, pde):
         """
@@ -219,18 +234,23 @@ class Model(nn.Module):
 
         return loss
     
-    def save_if_best(self, val_loss):
+    def save_if_best(self, val_loss, phy_loss):
         """
         Saves the best model so far, based on validation step.
         Loading is disabled by default in train_model().
         """
-
-        if self.val_loss is None or self.val_loss > val_loss:
-            self.patience = 0
-            self.val_loss = val_loss
-            torch.save(self.network.state_dict(), "best.hdf5")
-        else:
-            self.patience += 1
+        
+        if (self.later_val_loss is None or self.later_val_loss > val_loss) and self.epoch > 10000:
+            self.later_val_loss = val_loss
+            torch.save(self.network.state_dict(), "results/best_later_val" + self.name + ".hdf5")
+            with open("results/val_saved_epoch_" + self.name + ".txt", "w") as f:
+                f.write(str(self.epoch))
+            
+        if (self.later_phy_loss is None or self.later_phy_loss > phy_loss) and self.epoch > 10000:
+            self.later_phy_loss = phy_loss
+            torch.save(self.network.state_dict(), "results/best_later_phy" + self.name + ".hdf5")
+            with open("results/phy_saved_epoch_" + self.name + ".txt", "w") as f:
+                f.write(str(self.epoch))
 
     def loss_fn(self, cc, val, pde, lbfgs=False):
         """Calculates the full loss function."""
@@ -267,8 +287,14 @@ class Model(nn.Module):
         loss.backward()
         return loss
 
-    def train_model(self, cc, val, pde, iterations):
+    def train_model(self, cc, val, pde, iterations, tests, icbc):
         """Trains the model with both optimizers."""
+        
+        self.x_test = tests[0]
+        self.y_test = tests[1]
+        
+        self.ic = icbc[0]
+        self.bc = icbc[1]
 
         # Training with ADAM
         for iter in range(iterations):
@@ -298,8 +324,11 @@ class Model(nn.Module):
 
                 # Get mean absolute gradient of data loss
                 cc_loss = self.mse_loss(cc)
+                bc_loss = self.mse_loss(self.bc)
+                ic_loss = self.mse_loss(self.ic)
+                data_loss = cc_loss + bc_loss + ic_loss
                 self.adam_optimizer.zero_grad()
-                cc_loss.backward()
+                data_loss.backward()
                 gradients = []
 
                 for param in self.parameters():
@@ -323,4 +352,5 @@ class Model(nn.Module):
         self.ev = val
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
-        #self.network.load_state_dict(torch.load("best.hdf5"))
+        torch.save(self.network.state_dict(), "results/longest_running_model" + self.name + ".hdf5")
+        self.network.load_state_dict(torch.load("results/best_later_val" + self.name + ".hdf5"))
