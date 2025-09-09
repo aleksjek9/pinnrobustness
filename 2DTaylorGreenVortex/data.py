@@ -4,12 +4,6 @@ import numpy as np
 import torch
 import secrets
 
-seed = secrets.randbelow(1_000_000)
-random.seed(seed)
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
-
 # Configurations
 wave_number = 1
 visc = 0.1
@@ -68,6 +62,95 @@ def create_data():
 
     return input, output
 
+def create_ic():
+    '''Samples random observations from the initial condition.'''
+
+    input, output = [], []
+
+    for _ in range(0, 1600):
+        x, y, t = np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi), 0
+        input.append([x, y, t])
+        
+        u = (
+                np.exp(-2*visc * wave_number**2 * t) 
+                * np.sin(wave_number * x) 
+                * np.cos(wave_number * y)
+            )
+
+        v = (
+            -1 * np.exp(-2*visc * wave_number**2 * t) 
+            * np.cos(wave_number * x) 
+            * np.sin(wave_number * y)
+        )
+
+        p = (
+            0.25 * np.exp(-4 * visc * wave_number**2 * t) 
+            * (np.cos(2 * wave_number * x) 
+            + np.cos(2 * wave_number * y))
+        )
+
+        output.append([u, v, p])
+        
+    return [input, output]
+
+def create_bc():
+    '''Samples random observations from all boundaries.'''
+
+    input, output = [], []
+    
+    for _ in range(0, 400):
+        x, y, t = 0, np.random.uniform(0, 2*np.pi), np.random.uniform(0, T+dt)
+        input.append([x, y, t])
+        input.append([2*np.pi, y, t])
+        
+        u = (
+                np.exp(-2*visc * wave_number**2 * t) 
+                * np.sin(wave_number * x) 
+                * np.cos(wave_number * y)
+            )
+
+        v = (
+            -1 * np.exp(-2*visc * wave_number**2 * t) 
+            * np.cos(wave_number * x) 
+            * np.sin(wave_number * y)
+        )
+
+        p = (
+            0.25 * np.exp(-4 * visc * wave_number**2 * t) 
+            * (np.cos(2 * wave_number * x) 
+            + np.cos(2 * wave_number * y))
+        )
+
+        output.append([u, v, p])
+        output.append([u, v, p])
+        
+        x, y, t = np.random.uniform(0, 2*np.pi), 0, np.random.uniform(0, T+dt)
+        input.append([x, y, t])
+        input.append([x, 2*np.pi, t])
+        
+        u = (
+                np.exp(-2*visc * wave_number**2 * t) 
+                * np.sin(wave_number * x) 
+                * np.cos(wave_number * y)
+            )
+
+        v = (
+            -1 * np.exp(-2*visc * wave_number**2 * t) 
+            * np.cos(wave_number * x) 
+            * np.sin(wave_number * y)
+        )
+
+        p = (
+            0.25 * np.exp(-4 * visc * wave_number**2 * t) 
+            * (np.cos(2 * wave_number * x) 
+            + np.cos(2 * wave_number * y))
+        )
+
+        output.append([u, v, p])
+        output.append([u, v, p])
+        
+    return [input, output]
+
 
 def create_training_data(x_test, y_test):
     '''From full dataset, samples for training and validation set.'''
@@ -107,8 +190,9 @@ def get_data():
     x_test, y_test = create_data()
     x_train, y_train, x_val, y_val, x_test, y_test = create_training_data(x_test, y_test)
     pde_x = x_train # Uses same data for physics loss as for data loss
+    ic, bc = create_ic(), create_bc()
 
-    all_data = np.array([x_test, y_test, x_train, y_train, x_val, y_val, pde_x], dtype=object)
+    all_data = np.array([x_test, y_test, x_train, y_train, x_val, y_val, pde_x, ic, bc], dtype=object)
 
     os.makedirs("./data", exist_ok=True)
     np.save("./data/all_data.npy", all_data)
