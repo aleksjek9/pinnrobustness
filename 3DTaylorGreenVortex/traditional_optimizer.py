@@ -40,7 +40,7 @@ class Optimizer:
         x_train_val = np.concatenate((self.x_train, self.x_val))
         y_train_val = np.concatenate((self.y_train, self.y_val))
 
-        sort_by_time = np.argsort(x_train_val[:, 2])
+        sort_by_time = np.argsort(x_train_val[:, 3])
         x_train_val = x_train_val[sort_by_time]
         y_train_val = y_train_val[sort_by_time]
 
