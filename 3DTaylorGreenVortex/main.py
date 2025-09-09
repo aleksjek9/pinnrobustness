@@ -5,6 +5,9 @@ from graphing import graph_data
 
 from mpi4py import MPI
 
+'''Depending on your hardware, it may be safer to comment out an run PINN and baseline one at a time.
+It may also help to remove references to parallellization in other files when running PINN.'''
+
 
 def main():
     """
