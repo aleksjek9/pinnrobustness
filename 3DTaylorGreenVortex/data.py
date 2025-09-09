@@ -4,12 +4,6 @@ import random
 import torch
 import secrets
 
-seed = secrets.randbelow(1_000_000)
-random.seed(seed)
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
-
 def prepare_tensor(data):
     '''Makes tensors out of lists.'''
     
