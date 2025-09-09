@@ -274,7 +274,7 @@ class Model(nn.Module):
                 self.weight = 0.1 * self.weight + 0.9 * (max_grad / mean_grad)
                 print("New weight:", self.weight)'''
                 
-        self.network.load_state_dict(torch.load("best.hdf5"))
+        #self.network.load_state_dict(torch.load("best.hdf5"))
 
         # Training with L-BFGS
         self.bc = bc
@@ -283,4 +283,4 @@ class Model(nn.Module):
         self.ev = val
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
-        self.network.load_state_dict(torch.load("best.hdf5"))
+        #self.network.load_state_dict(torch.load("best.hdf5"))
