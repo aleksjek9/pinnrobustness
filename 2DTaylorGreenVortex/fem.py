@@ -175,7 +175,7 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
 
     all_predictions = comm.gather(local_predictions, root=0) 
 
-    if rank == 0:
+    if (rank == 0) and len(slsqp) > 0:
         """
         Gather all local predictions across ranks and sort them by index.
         After removing duplicate entries, then broadcast the final result to all ranks.
@@ -189,9 +189,9 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
         for index, vec in combined:
             unique[index] = vec
         cleaned = [unique[k] for k in sorted(unique)]
-    else:
+    elif len(slsqp) > 0:
         cleaned = None
-
+    
     if len(slsqp) > 0:
         predictions = comm.bcast(cleaned, root=0)
 
