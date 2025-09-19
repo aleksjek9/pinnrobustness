@@ -48,6 +48,9 @@ class Model(nn.Module):
         )
 
         self.val_loss = None
+        self.test_loss_history = []
+        self.x_test = None
+        self.y_test = None 
 
 
     def create_network(self):
@@ -98,6 +101,9 @@ class Model(nn.Module):
         self.parameter_history.append(visc)
         self.val_history.append(val_loss)
 
+        test_loss = self.mse_loss([self.x_test, self.y_test])
+        self.test_loss_history.append(test_loss.item()
+
         if self.epoch in list(range(1, 10000, 100)):
 
             with open('results/minutes_' + self.name + '.txt', 'a') as f:
@@ -119,6 +125,10 @@ class Model(nn.Module):
             with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
                 for item in self.parameter_history:
                     f.write(f"{item}, ")
+
+            with open('results/test_history_' + self.name + '.txt', 'a') as f:
+                for item in self.test_loss_history:
+                    f.write(f"{item}, ") 
             
             # Empty lists until next writing
             self.minutes = []
@@ -126,6 +136,7 @@ class Model(nn.Module):
             self.data_history = []
             self.val_history = []
             self.parameter_history = []
+            self.test_loss_history = []
 
 
     def phy_loss(self, pde):
@@ -219,8 +230,11 @@ class Model(nn.Module):
         loss.backward()
         return loss
 
-    def train_model(self, bc, ic, cc, val, pde, iterations):
+    def train_model(self, bc, ic, cc, val, pde, iterations, tests):
         """Trains the model with both optimizers."""
+
+        self.x_test = tests[0].to(device)
+        self.y_test = tests[1].to(device) 
 
         bc[0] = bc[0].to(device)
         bc[1] = bc[1].to(device)
