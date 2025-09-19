@@ -116,8 +116,8 @@ class Model(nn.Module):
 
         return data_loss
 
-    def root_mean_squared_error(self, y_true, y_pred):
-        return torch.sqrt(torch.mean((y_true - y_pred) ** 2))
+    def mean_squared_error(self, y_true, y_pred):
+        return torch.mean((y_true - y_pred) ** 2)
 
     def save_history(self, elapsed_minutes, phy_loss, cc_loss, val, visc):
         #Saves various loss histories.
@@ -129,7 +129,7 @@ class Model(nn.Module):
         
         with torch.no_grad():
             pred = self.forward(self.x_test)
-            error = self.root_mean_squared_error(pred[:, 0:3], self.y_test[:, 0:3])
+            error = self.mean_squared_error(pred[:, 0:3], self.y_test[:, 0:3])
             self.total_history.append(error)
 
         if self.epoch in list(range(1, 300002, 10000)):
