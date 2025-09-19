@@ -53,7 +53,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
             PINN.train_model(
                             [x_bc, y_bc], [x_ic, y_ic], 
                             [x_train, y_train_noise], [x_val, y_val_noise], 
-                            pde_x, iterations=4000
+                            pde_x, 4000, [x_test, y_test]
             )
             viscosity = 10 ** PINN.visc.item()
 
