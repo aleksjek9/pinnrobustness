@@ -121,8 +121,8 @@ class Model(nn.Module):
         data_loss = torch.mean((output - data[1]) ** 2)
         return data_loss
 
-    def root_mean_squared_error(self, y_true, y_pred):
-        return torch.sqrt(torch.mean((y_true - y_pred) ** 2))
+    def mean_squared_error(self, y_true, y_pred):
+        return torch.mean((y_true - y_pred) ** 2)
 
     def save_history(self, elapsed_minutes, phy_loss, cc_loss, val, visc):
         """
@@ -142,7 +142,7 @@ class Model(nn.Module):
         u_pred = gradient(pred[:, 0], x, create=False)
         v_pred = -1 *gradient(pred[:, 0], y, create=False)
         pred = torch.stack((u_pred, v_pred), dim=1)
-        error = self.root_mean_squared_error(pred, self.y_test)
+        error = self.mean_squared_error(pred, self.y_test)
         self.total_history.append(error)
 
 
