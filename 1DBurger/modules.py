@@ -102,7 +102,7 @@ class Model(nn.Module):
         self.val_history.append(val_loss)
 
         test_loss = self.mse_loss([self.x_test, self.y_test])
-        self.test_loss_history.append(test_loss.item()
+        self.test_loss_history.append(test_loss.item())
 
         if self.epoch in list(range(1, 10000, 100)):
 
