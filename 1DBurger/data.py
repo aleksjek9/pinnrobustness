@@ -15,7 +15,30 @@ def prepare_tensor(data):
 def add_noise(data, noise_level=0):
     """Adds noise to data."""
 
-    return [entry + np.random.normal(0, noise_level, entry.shape) for entry in data]
+    rng = np.random.default_rng()
+    return [entry + rng.normal(0, noise_level, entry.shape) for entry in data]
+
+def log_SNR(output):
+
+    std_levels = [0, 0.5, 1, 2, 3, 5, 7, 10, 25]
+    y = np.array(output).flatten()
+    signal_variance = np.var(y)
+    levels = []
+
+    for sigma in std_levels:
+        if sigma == 0:
+            levels.append(f"σ = {sigma},  SNR = ∞ (no noise)")
+            continue
+        
+        noise_variance = sigma ** 2
+        snr = signal_variance / noise_variance
+        db = 10 * np.log10(snr)
+        
+        levels.append(f"σ = {sigma:<5}, SNR = {snr:.4f}, SNR(dB) = {db:.2f}")
+
+    with open("snr.txt", "w") as f:
+        for line in levels:
+            f.write(line + "\n")
         
 
 def load_data():
@@ -34,6 +57,8 @@ def load_data():
         for j in range(len(x)):
             input.append(np.array([x[j][0], t[i][0]]))
             output.append(np.array([exact[i][j]]))
+
+    log_SNR(output)
 
     return input, output
 

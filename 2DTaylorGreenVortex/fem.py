@@ -161,7 +161,8 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
                     p_val = p_next(x, y) - mean_pressure
                     local_predictions.append((idx, [x_vel, y_vel, p_val]))
                 except Exception as e:
-                    print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
+                    #print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
+                    pass
         elif len(pinn) > 0:
             # For FEM/PINN
             for point in pinn[np.isclose(pinn[:, 2].detach().cpu().numpy() * time_scale, t+1), 0:2]:

@@ -26,11 +26,11 @@ class Optimizer:
         #Return error on training set
 
         predictions = tgv_vortex(viscosity, slsqp=self.x_train)
-        print(predictions[0:10])
-        print(self.y_train[0:10])
+        #print(predictions[0:10])
+        #print(self.y_train[0:10])
         rmse = float((self.l2_lambda*viscosity)**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:3] - self.y_train[~np.isclose(self.x_train[:, 3], 0.0), 0:3]) ** 2))
         pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 3] - self.y_train[~np.isclose(self.x_train[:, 3], 0.0), 3]) ** 2))
-        print(rmse)
+        #print(rmse)
 
         return rmse - float((self.l2_lambda*self.viscosity[0])**2)
 
@@ -83,15 +83,22 @@ class Optimizer:
             "maxiter": 100, 
             "disp": True
         }
+        
+        done = False
+        
+        while done == False:
 
-        result = minimize(
-            fun=self.error_include_val,
-            x0=[5],
-            method="SLSQP",
-            jac="3-point",
-            bounds=[(0.00314159265, 5)],
-            options = options,
-        )
+            result = minimize(
+                fun=self.error_include_val,
+                x0=[5],
+                method="SLSQP",
+                jac="3-point",
+                bounds=[(0.00314159265, 5)],
+                options = options,
+            )
+            
+            if (result.nit > 1) and result.success:
+                done = True
 
         print("Final viscosity:", result["x"])
 

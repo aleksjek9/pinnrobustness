@@ -79,7 +79,6 @@ class Optimizer:
         )
         return error
 
-
     def validation(self):
         """Returns validation set error."""
 

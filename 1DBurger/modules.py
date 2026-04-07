@@ -89,6 +89,41 @@ class Model(nn.Module):
         output = self.forward(data[0])
         return torch.mean((output - data[1]) ** 2)
 
+    def flush_histories(self):
+
+        with open('results/minutes_' + self.name + '.txt', 'a') as f:
+                for item in self.minutes:
+                    f.write(f"{item}, ")
+
+        with open('results/phy_history_' + self.name + '.txt', 'a') as f:
+            for item in self.phy_history:
+                f.write(f"{item}, ")
+
+        with open('results/data_history_' + self.name + '.txt', 'a') as f:
+            for item in self.data_history:
+                f.write(f"{item}, ")
+
+        with open('results/val_history_' + self.name + '.txt', 'a') as f:
+            for item in self.val_history:
+                f.write(f"{item}, ")
+
+        with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
+            for item in self.parameter_history:
+                f.write(f"{item}, ")
+
+        with open('results/test_history_' + self.name + '.txt', 'a') as f:
+            for item in self.test_loss_history:
+                f.write(f"{item}, ") 
+        
+        # Empty lists
+        self.minutes = []
+        self.phy_history = []
+        self.data_history = []
+        self.val_history = []
+        self.parameter_history = []
+        self.test_loss_history = []
+
+
     def save_history(self, elapsed_minutes, phy_loss, cc_loss, val_loss, visc):
         """
         Saves various loss histories that can be
@@ -297,4 +332,5 @@ class Model(nn.Module):
         self.ev = val
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
+        self.flush_histories()
         #self.network.load_state_dict(torch.load("best.hdf5"))

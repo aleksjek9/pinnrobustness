@@ -1,10 +1,12 @@
 import os
-import torch
+import torch, sys
 import numpy as np
 from modules import Model
 from data import prepare_tensor, add_noise
 from fem import burgers_1d
-from sklearn.metrics import root_mean_squared_error 
+from sklearn.metrics import root_mean_squared_error
+import multiprocessing as mp
+import subprocess, time, pickle, random
 
 """
 The amount of times to run each experiment
@@ -14,12 +16,15 @@ samples = 30
 test_set_size = 22272
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+def worker(noise_level, seed):
+    subprocess.run([sys.executable, "single_pinn.py", "--noise", str(noise_level), "--seed", str(seed)], check=True)
+
 def PINN_experiment(data, noise, verbose=True, rerun=False):
     """
     Runs the full PINN experiments.
     rmse := metric to estimate the difference between the actual and predicted solution.
     estimated_parameter := viscosity for the burgers equation.
-    parameter_error := the difference betweeen the estimated parameter and the actuall parameter value.
+    parameter_error := the difference betweeen the estimated parameter and the actual parameter value.
     fem_error := the difference between the FEM solution and the actual solution.
     -Skips experiment if results are already saved
     """
@@ -35,26 +40,30 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
     estimated_parameter = []
     parameter_error = []
     fem_error = []
+    stats = []
 
     for noise_level in noise:
         noise_rmse = []
         noise_estimated_parameter = []
         noise_parameter_error = []
         noise_fem_error = []
+        noise_stats = []
 
         for sample in range(samples):
-            # Add noise to data  
+            # Add noise to data
             x_test, y_test, x_train, y_train, x_bc, y_bc, x_ic, y_ic, x_val, y_val, pde_x, random_indices = prepare_tensor(data)
-            y_train_noise, y_val_noise = add_noise([y_train, y_val], noise_level=noise_level)
 
-            # Train model
+            seed = random.randint(0, 2**32 - 1)
+            mp.set_start_method("spawn", force=True)
+            p = mp.Process(target=worker, args=(noise_level, seed))
+            p.start()
+            p.join()
+            clock_time, cpu_time, peak_memory = np.load("timings.npy")
+            noise_stats.append([clock_time, cpu_time, peak_memory])
+
             PINN = Model(name=str(noise_level))
             PINN.to(device)
-            PINN.train_model(
-                            [x_bc, y_bc], [x_ic, y_ic], 
-                            [x_train, y_train_noise], [x_val, y_val_noise], 
-                            pde_x, 4000, [x_test, y_test]
-            )
+            PINN.load_state_dict(torch.load("model.pth", map_location=device))
             viscosity = 10 ** PINN.visc.item()
 
             # Save RMSE on test set
@@ -84,6 +93,7 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
                 print(noise_estimated_parameter)
                 print(noise_parameter_error)
                 print(noise_fem_error)
+                print(noise_stats)
 
             if sample == samples - 1:
                 # Save everything from the last sample 
@@ -91,14 +101,18 @@ def PINN_experiment(data, noise, verbose=True, rerun=False):
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
                 fem_error.append(noise_fem_error)
+                stats.append(noise_stats)
 
                 noise_rmse = []
                 noise_estimated_parameter = []
                 noise_parameter_error = []
                 noise_fem_error = []
+                noise_stats = []
 
-    all_results = [rmse, estimated_parameter, parameter_error, fem_error]
-    np.save("./results/pinn_results.npy", all_results)
+    all_results = [np.array(rmse, dtype=object), np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object), np.array(fem_error, dtype=object), np.array(stats, dtype=object)]
+    arr = np.empty(len(all_results), dtype=object)
+    arr[:] = all_results
+    np.save("./results/pinn_results.npy", np.array(arr, dtype=object))
     print("PINN test complete.")
 
     return all_results

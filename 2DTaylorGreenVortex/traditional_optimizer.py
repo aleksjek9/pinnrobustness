@@ -28,8 +28,8 @@ class Optimizer:
         """Return error on training set."""
 
         predictions = tgv_vortex(viscosity, slsqp=self.x_train)
-        print(predictions[0:10])
-        print(self.y_train[0:10])
+        #print(predictions[0:10])
+        #print(self.y_train[0:10])
         rmse = float((self.l2_lambda*viscosity)**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:2] - self.y_train[~np.isclose(self.x_train[:, 2], 0.0), 0:2]) ** 2))
         pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 2] - self.y_train[~np.isclose(self.x_train[:, 2], 0.0), 2]) ** 2))
         print(rmse)
@@ -47,8 +47,8 @@ class Optimizer:
         y_train_val = y_train_val[sort_by_time]
 
         predictions = np.array(tgv_vortex(viscosity, slsqp=x_train_val))
-        print(predictions[::1000])
-        print(y_train_val[~np.isclose(x_train_val[:, 2], 0.0)][::1000])
+        #print(predictions[::1000])
+        #print(y_train_val[~np.isclose(x_train_val[:, 2], 0.0)][::1000])
         rmse = float((self.l2_lambda*viscosity)**2) + np.sqrt(np.mean((np.array(predictions)[:, 0:2] - y_train_val[~np.isclose(x_train_val[:, 2], 0.0), 0:2]) ** 2))
         pressure_rmse = np.sqrt(np.mean((np.array(predictions)[:, 2] - y_train_val[~np.isclose(x_train_val[:, 2], 0.0), 2]) ** 2))
         print(rmse)

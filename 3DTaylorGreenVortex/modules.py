@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import torch.optim as optim
+import uuid
 
 
 def gradient(output, input, create=True):
@@ -28,7 +29,8 @@ class Model(nn.Module):
         super().__init__()
 
         self.network = self.create_network()
-
+        
+        self.id = str(uuid.uuid4())[:5]
         self.start_time = time.time()
         self.patience = 0
         self.epoch = 0
@@ -119,20 +121,21 @@ class Model(nn.Module):
     def mean_squared_error(self, y_true, y_pred):
         return torch.mean((y_true - y_pred) ** 2)
 
-    def save_history(self, elapsed_minutes, phy_loss, cc_loss, val, visc):
+    def save_history(self, elapsed_minutes, phy_loss, data_loss, val, visc):
         #Saves various loss histories.
 
         self.minutes.append(elapsed_minutes)
         self.phy_history.append(phy_loss)
-        self.data_history.append(cc_loss)
+        self.data_history.append(data_loss)
         self.parameter_history.append(visc)
+        self.val_history.append(val)
         
         with torch.no_grad():
             pred = self.forward(self.x_test)
             error = self.mean_squared_error(pred[:, 0:3], self.y_test[:, 0:3])
             self.total_history.append(error)
 
-        if self.epoch in list(range(1, 300002, 10000)):
+        if self.epoch in list(range(1, 300002, 1000)):
 
             with open('results/minutes_' + self.name + '.txt', 'a') as f:
                 for item in self.minutes:
@@ -146,10 +149,8 @@ class Model(nn.Module):
                 for item in self.data_history:
                     f.write(f"{item}, ")
 
-            val_loss = [self.mse_loss(val)]
-
             with open('results/val_history_' + self.name + '.txt', 'a') as f:
-                for item in val_loss:
+                for item in self.val_history:
                     f.write(f"{item}, ")
 
             with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
@@ -172,6 +173,45 @@ class Model(nn.Module):
             self.parameter_history = []
             self.weights_history = []
             self.total_history = []
+
+    def flush_histories(self):
+
+        with open('results/minutes_' + self.name + '.txt', 'a') as f:
+                for item in self.minutes:
+                    f.write(f"{item}, ")
+
+        with open('results/phy_history_' + self.name + '.txt', 'a') as f:
+            for item in self.phy_history:
+                f.write(f"{item}, ")
+
+        with open('results/data_history_' + self.name + '.txt', 'a') as f:
+            for item in self.data_history:
+                f.write(f"{item}, ")
+
+        with open('results/val_history_' + self.name + '.txt', 'a') as f:
+            for item in self.val_history:
+                f.write(f"{item}, ")
+
+        with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
+            for item in self.parameter_history:
+                f.write(f"{item}, ")
+
+        with open('results/weights_history_' + self.name + '.txt', 'a') as f:
+            for item in self.weights_history:
+                f.write(f"{item}, ")
+                
+        with open('results/total_history_' + self.name + '.txt', 'a') as f:
+            for item in self.total_history:
+                f.write(f"{item}, ")
+        
+        # Empty lists until next writing
+        self.minutes = []
+        self.phy_history = []
+        self.data_history = []
+        self.val_history = []
+        self.parameter_history = []
+        self.weights_history = []
+        self.total_history = []
 
     def phy_loss(self, pde):
         """
@@ -243,13 +283,13 @@ class Model(nn.Module):
         if (self.later_val_loss is None or self.later_val_loss > val_loss) and self.epoch > 10000:
             self.later_val_loss = val_loss
             torch.save(self.network.state_dict(), "results/best_later_val" + self.name + ".hdf5")
-            with open("results/val_saved_epoch_" + self.name + ".txt", "w") as f:
+            with open("results/val_saved_epoch_" + self.name + "_" + self.id + ".txt", "w") as f:
                 f.write(str(self.epoch))
             
         if (self.later_phy_loss is None or self.later_phy_loss > phy_loss) and self.epoch > 10000:
             self.later_phy_loss = phy_loss
             torch.save(self.network.state_dict(), "results/best_later_phy" + self.name + ".hdf5")
-            with open("results/phy_saved_epoch_" + self.name + ".txt", "w") as f:
+            with open("results/phy_saved_epoch_" + self.name + "_" + self.id + ".txt", "w") as f:
                 f.write(str(self.epoch))
 
     def loss_fn(self, cc, val, pde, lbfgs=False):
@@ -257,24 +297,30 @@ class Model(nn.Module):
 
         cc_loss = self.mse_loss(cc)
         phy_loss = self.phy_loss(pde)
+        bc_loss = self.mse_loss(self.bc)
+        ic_loss = self.mse_loss(self.ic)
 
-        total_loss = cc_loss * self.weight + phy_loss
+        data_loss = cc_loss + bc_loss + ic_loss
+
+        total_loss = data_loss * self.weight + phy_loss
+        
+        val_loss = self.mse_loss(val).item()
 
         elapsed_time = time.time() - self.start_time
         elapsed_minutes = elapsed_time / 60
 
-        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", cc_loss.item(), " Parameter: ", torch.nn.functional.softplus(self.visc).item() + 0.00314159265)
+        print("Epoch: ", self.epoch, " Minutes: ", elapsed_minutes, " Phy_loss: ", phy_loss.item(), " Data_loss: ", data_loss.item(), " Parameter: ", torch.nn.functional.softplus(self.visc).item() + 0.00314159265)
         
         self.save_history(
             elapsed_minutes, 
             phy_loss.item(), 
-            cc_loss.item(), 
-            val, 
+            data_loss.item(), 
+            val_loss, 
             torch.nn.functional.softplus(self.visc).item() + 0.00314159265
         )
         
         val_loss = self.mse_loss(val)
-        self.save_if_best(val_loss)
+        self.save_if_best(val_loss, phy_loss)
             
         return total_loss
 
@@ -352,5 +398,6 @@ class Model(nn.Module):
         self.ev = val
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
+        self.flush_histories()
         torch.save(self.network.state_dict(), "results/longest_running_model" + self.name + ".hdf5")
         self.network.load_state_dict(torch.load("results/best_later_val" + self.name + ".hdf5"))

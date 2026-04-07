@@ -5,6 +5,11 @@ import random
 import torch
 import secrets
 
+def add_noise(data, noise_level=0):
+    """Adds noise to data."""
+
+    return [entry + np.random.normal(0, noise_level, entry.shape) for entry in data]
+
 def prepare_tensor(data):
     '''Makes tensors out of lists.'''
     
@@ -100,7 +105,4 @@ def get_data():
 
     return data
 
-def add_noise(data, noise_level=0):
-    """Adds noise to data."""
 
-    return [entry + np.random.normal(0, noise_level, entry.shape) for entry in data]

@@ -1,32 +1,30 @@
-import os
+import os, random
 import numpy as np
 from sklearn.metrics import root_mean_squared_error
 from traditional_optimizer import Optimizer
 from data import add_noise
 from bayes_opt import BayesianOptimization
-from mpi4py import MPI
-
-
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+import multiprocessing as mp
+import subprocess, sys
 
 #How many times to run each experiment
-samples = 5
+samples = 1
 
-def single_experiment(l2_lambda, parameter_optimizer):
-    """
-    Runs a single experiment and returns validation error.
-    Helper function for finding L2 lambda.
-    """
+def worker(noise_level, seed):
+    subprocess.run(
+    [
+        "mpirun",
+        "-n", "55",
+        sys.executable,
+        "single_trad.py",
+        "--noise", str(noise_level),
+        "--seed", str(seed)
+    ],
+    check=True
+    )
 
-    print("l2_lambda", l2_lambda)
-    parameter_optimizer.l2_lambda = l2_lambda
-    result = parameter_optimizer.run()
-    parameter_optimizer.viscosity = result["x"][0]
 
-    return -parameter_optimizer.validation() 
-
-def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,0,0,0,0,0,0,0]):
+def traditional_experiment(data, noise, step, verbose=True, rerun=False, lambdas=[0,0,0,0,0,0,0,0,0]):
     '''Runs the full baseline experiments.'''
 
     #Skips experiment if results are already saved
@@ -35,10 +33,11 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
         all_data = np.load("./results/traditional_results.npy", allow_pickle=True)
         return all_data
     
-    #Holds results from all samples
+    # Holds results from all samples
     rmse = []
     estimated_parameter = []
     parameter_error = []
+    stats = []
 
     # Repeat experiments for every noise level
     for i, noise_level in enumerate(noise):
@@ -46,77 +45,48 @@ def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,
         noise_estimated_parameter = []
         noise_rmse = []
         noise_parameter_error = []
+        noise_stats = []
 
         # Runs each experiment multiple times
         for sample in range(samples):
 
-            # Add noise to data
-            x_train, y_train, x_val, y_val, x_test, y_test, pde_x = data
-            y_train_noise, y_val_noise = np.array(y_train), np.array(y_val)
+            seed = random.randint(0, 2**32 - 1)
+            mp.set_start_method("spawn", force=True)
+            p = mp.Process(target=worker, args=(noise_level, seed))
+            p.start()
+            p.join()
+            best_viscosity, rms = np.load("trad_results.npy")
+            max_clock_time, total_cpu_time, max_memory, avg_memory = np.load("timings_FEM.npy")
+            noise_stats.append([max_clock_time, total_cpu_time, max_memory, avg_memory])
 
-            if rank == 0:
-                y_train_noise, y_val_noise = add_noise([y_train_noise, y_val_noise], noise_level=noise_level)
-            else:
-                y_train_noise, y_val_noise = None, None
-            
-            y_train_noise = comm.bcast(y_train_noise, root=0)  # Broadcast noise to other ranks
-            y_val_noise = comm.bcast(y_val_noise, root=0)      # Broadcast noise to other ranks
-
-            parameter_optimizer = Optimizer([x_test, y_test, x_train, y_train_noise, y_val_noise, x_val])
-            
-            # If L2 lambda is not provided, Bayesian search calculates the best L2 lambda instead
-            if len(lambdas) == 0:
-
-                # Bayesian optimization setting
-                pbounds = {'x': (0, 20000)}
-
-                bayesian_optimizer = BayesianOptimization(
-                    f=lambda x: single_experiment(x, parameter_optimizer),
-                    pbounds=pbounds,
-                    random_state=1,
-                )
-
-                bayesian_optimizer.maximize(
-                    init_points=5,
-                    n_iter=10,
-                )
-
-                best_l2_lambda = bayesian_optimizer.max['params']['x']
-                best_viscosity = parameter_optimizer.run()["x"][0]
-
-                parameter_optimizer.l2_lambda = best_l2_lambda
-                parameter_optimizer.viscosity = best_viscosity
-            else:
-                # Just runs experiment to solve inverse problem using provided L2 lambda
-                parameter_optimizer.l2_lambda = lambdas[i]
-                parameter_optimizer.viscosity = parameter_optimizer.run()["x"]
-                best_viscosity = parameter_optimizer.viscosity[0]
-
-            #Get results on test set and save
-            rms = parameter_optimizer.test()
             noise_rmse.append(rms)
             noise_estimated_parameter.append(best_viscosity)
             noise_parameter_error.append(root_mean_squared_error([best_viscosity], [0.01]))
 
-            #Outputs statistics while running
+            # Outputs statistics while running
             print("Sample: ", str(sample + 1), " out of ", str(samples))
             print("Noise level:" + str(noise_level))
             print("Estimated parameter:" + str(noise_estimated_parameter[-1]))
             print("Test set, RMSE: " + str(noise_rmse[-1]))
-            print(noise)
-            print(noise_rmse)
-            print(noise_estimated_parameter)
-            print(noise_parameter_error)
+            print(noise_stats)
 
             if sample == samples - 1 or noise_level == 0:
                 # After the last sample, we have to save everything
                 rmse.append(noise_rmse)
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
+                stats.append(noise_stats)
+                
+                all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object), np.array(stats, dtype=object)]
+                arr = np.empty(len(all_results), dtype=object)
+                arr[:] = all_results
+                np.save("./results/traditional_results" + str(step) + "temp_progress.npy", arr)
                 break #For noise_level = 0
 
-    all_results = [rmse, estimated_parameter, parameter_error]
-    np.save("./results/traditional_results.npy", all_results)
+    all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object), np.array(stats, dtype=object)]
+    arr = np.empty(len(all_results), dtype=object)
+    arr[:] = all_results
+    np.save("./results/traditional_results" + str(step) + ".npy", arr)
     print("Traditional test complete.")
 
     return all_results

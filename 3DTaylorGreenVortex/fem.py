@@ -66,9 +66,8 @@ def calculate_normalizer(p_next, mesh):
     mean_pressure = integral_p / domain
 
     return mean_pressure
-
+    
 def tgv_vortex(visc, slsqp=[], pinn=[]):
-    '''Fenics has some parallellization bugs and may crash with a lot of cores.'''
 
     complete = False
     
@@ -77,10 +76,12 @@ def tgv_vortex(visc, slsqp=[], pinn=[]):
         try:
             predictions = tgv_vortex_go(visc, slsqp, pinn)
             complete = True
-        except:
-            print("Woops")
+        except Exception as e:
+            print("Probably parallelization error with initialization.")
+            print("Actual error:", e)
             
     return predictions
+    
 
 def tgv_vortex_go(visc, slsqp=[], pinn=[]):
     """Inspired by:
@@ -108,35 +109,41 @@ def tgv_vortex_go(visc, slsqp=[], pinn=[]):
 
     u_prev = Function(velocity)
 
-    #More parallell safe initialization
-    all_cords = velocity.dofmap().dofs()
-    readable_cords = velocity.tabulate_dof_coordinates().reshape((-1, 3))
-    thread_cords = range(velocity.dofmap().ownership_range()[0], velocity.dofmap().ownership_range()[1])
+    #Parallell safe initialization
+    dof_coords = velocity.tabulate_dof_coordinates().reshape((-1, 3))
+    local_dofs = velocity.dofmap().dofs()
+    owned_dofs = velocity.dofmap().ownership_range()
+    owned_dofs = range(owned_dofs[0], owned_dofs[1])
     
-    updated_values = np.zeros(len(thread_cords))
+    local_values = np.zeros(len(local_dofs))
     
-    for i, cord in enumerate(all_cords):
-        if cord in thread_cords:
-            x, y, z = readable_cords[i]
-            pos = cord % 3
-            if pos == 0:
-                updated_values[i] = np.sin(x) * np.cos(y) * np.cos(z)
-            elif pos == 1:
-                updated_values[i] = -np.cos(x) * np.sin(y) * np.cos(z)
-            elif pos == 2:
-                updated_values[i] = 0.0
+    for i, dof in enumerate(local_dofs):
+        if dof in owned_dofs:
+            x, y, z = dof_coords[i]
+            comp = dof % 3
+            if comp == 0:
+                local_values[i] = np.sin(x) * np.cos(y) * np.cos(z)
+            elif comp == 1:
+                local_values[i] = -np.cos(x) * np.sin(y) * np.cos(z)
+            elif comp == 2:
+                local_values[i] = 0.0
                 
-    u_prev.vector().set_local(updated_values)
+    u_prev.vector().set_local(local_values)
     u_prev.vector().apply("insert")
-
+    
     u_tent = Function(velocity)
     u_next = Function(velocity)
 
     p_trial = TrialFunction(pressure)
     q_test = TestFunction(pressure)
+    
     p_next = Function(pressure)
-    p_init = Expression(("0"), degree=2)
-    p_next.interpolate(p_init)
+    dofmap = pressure.dofmap()
+    local_dofs = dofmap.dofs()
+    owned_dofs = range(*dofmap.ownership_range())
+    local_values = np.zeros(len(local_dofs))
+    p_next.vector().set_local(local_values)
+    p_next.vector().apply("insert")
     
     #Chorin's projection FEM formulations
     momentum = (((1/dt) * inner(u_trial - u_prev, v_test) * dx) + (inner(grad(u_prev) * u_prev, v_test) * dx) + (visc * inner(grad(u_trial), grad(v_test)) * dx))
@@ -199,7 +206,7 @@ def tgv_vortex_go(visc, slsqp=[], pinn=[]):
             # For parallellized FEM/SLSQP
             time_filtered = [
                 (idx, point) for idx, point in enumerate(slsqp)
-                if np.isclose(point[3] * time_scale, t + 1)
+                if np.isclose(point[3] * time_scale, float((t+1)*5))
             ] 
             for idx, point in time_filtered:
                 x, y, z = point[0], point[1], point[2]
@@ -208,13 +215,22 @@ def tgv_vortex_go(visc, slsqp=[], pinn=[]):
                     p_val = p_next(x, y, z) - mean_pressure
                     local_predictions.append((idx, [x_vel, y_vel, z_vel, p_val]))
                 except Exception as e:
-                    print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
+                    #print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
+                    pass
         elif len(pinn) > 0:
-            #For FEM/PINN
-            for point in pinn[np.isclose(pinn[:, 3].detach().cpu().numpy() * time_scale, float((t+1)*5)), 0:3]:
-                x_vel, y_vel, z_vel = u_next(point[0], point[1], point[2])
-                pressure = p_next(point[0], point[1], point[2]) - mean_pressure
-                predictions.append([x_vel, y_vel, z_vel, pressure])
+            time_filtered = [
+                (idx, point) for idx, point in enumerate(pinn)
+                if np.isclose(point[3] * time_scale, float((t+1)*5))
+            ]
+            for idx, point in time_filtered:
+                x, y, z = point[0], point[1], point[2]
+                try:
+                    x_vel, y_vel, z_vel = u_next(x, y, z)
+                    p_val = p_next(x, y, z) - mean_pressure
+                    local_predictions.append((idx, [x_vel, y_vel, z_vel, p_val]))
+                except Exception as e:
+                    #print(f"[Rank {rank}] Evaluation failed at ({x:.3f}, {y:.3f}) β†’ {e}", flush=True)
+                    pass
 
         u_prev.assign(u_next)
 
@@ -222,7 +238,7 @@ def tgv_vortex_go(visc, slsqp=[], pinn=[]):
 
     all_predictions = comm.gather(local_predictions, root=0)
 
-    if rank == 0:
+    if (rank == 0):
         """
         Gather all local predictions across ranks and sort them by index.
         After removing duplicate entries, then broadcast the final result to all ranks.
@@ -239,14 +255,13 @@ def tgv_vortex_go(visc, slsqp=[], pinn=[]):
     else:
         cleaned = None
 
-    if len(slsqp) > 0:
-        predictions = comm.bcast(cleaned, root=0)
+    predictions = comm.bcast(cleaned, root=0)
 
     del mesh #Memory leak debugging
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     
-    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    print(f"Elapsed time: {elapsed_time:.2f} seconds") if rank==0 else None
 
     return predictions

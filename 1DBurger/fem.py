@@ -119,7 +119,7 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indic
             J=jacobian, 
             solver_parameters={'newton_solver':  {'maximum_iterations': 50}},
         )
-
+        
         if gradient_mode and (index not in excluded_indices):
             result.append(cur_vel.copy(deepcopy=True))
         elif index not in excluded_indices:
@@ -128,8 +128,8 @@ def burgers_1d(viscosity, initial_condition, gradient_mode=False, excluded_indic
         index += 1
         t = t + float(dt)
         old_vel.assign(cur_vel)
-
+    
     if gradient_mode:
         return [result], control_variable, solution_comparison, dof_to_vertex_map(velocity), []
-    
+
     return [result]

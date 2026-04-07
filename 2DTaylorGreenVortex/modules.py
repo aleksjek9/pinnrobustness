@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 import torch.optim as optim
+import uuid
 
 
 def gradient(output, input, create=True):
@@ -29,7 +30,8 @@ class Model(nn.Module):
         super().__init__()
 
         self.network = self.create_network()
-
+        
+        self.id = str(uuid.uuid4())[:5]
         self.start_time = time.time()
         self.patience = 0
         self.epoch = 0
@@ -61,6 +63,11 @@ class Model(nn.Module):
         )
 
         self.val_loss = None
+        self.later_val_loss = None
+        self.later_phy_loss = None
+        self.x_test = None
+        self.y_test = None
+        self.total_history = []
 
 
     def create_network(self):
@@ -120,9 +127,9 @@ class Model(nn.Module):
         
         data_loss = torch.mean((output - data[1]) ** 2)
         return data_loss
-
-    def mean_squared_error(self, y_true, y_pred):
-        return torch.mean((y_true - y_pred) ** 2)
+    
+    def root_mean_squared_error(self, y_true, y_pred):
+        return torch.sqrt(torch.mean((y_true - y_pred) ** 2))
 
     def save_history(self, elapsed_minutes, phy_loss, cc_loss, val, visc):
         """
@@ -142,9 +149,10 @@ class Model(nn.Module):
         u_pred = gradient(pred[:, 0], x, create=False)
         v_pred = -1 *gradient(pred[:, 0], y, create=False)
         pred = torch.stack((u_pred, v_pred), dim=1)
-        error = self.mean_squared_error(pred, self.y_test)
+        error = self.root_mean_squared_error(pred, self.y_test)
         self.total_history.append(error)
-
+        
+        self.val_history.append(val)
 
         if self.epoch in list(range(1, 300002, 10000)):
 
@@ -160,10 +168,8 @@ class Model(nn.Module):
                 for item in self.data_history:
                     f.write(f"{item}, ")
 
-            val_loss = [self.mse_loss(val)]
-
             with open('results/val_history_' + self.name + '.txt', 'a') as f:
-                for item in val_loss:
+                for item in self.val_history:
                     f.write(f"{item}, ")
 
             with open('results/parameter_history_' + self.name + '.txt', 'a') as f:
@@ -185,7 +191,7 @@ class Model(nn.Module):
             self.val_history = []
             self.parameter_history = []
             self.weights_history = []
-            self.total_history = [] 
+            self.total_history = []
 
     def phy_loss(self, pde):
         """
@@ -237,14 +243,15 @@ class Model(nn.Module):
         if (self.later_val_loss is None or self.later_val_loss > val_loss) and self.epoch > 10000:
             self.later_val_loss = val_loss
             torch.save(self.network.state_dict(), "results/best_later_val" + self.name + ".hdf5")
-            with open("results/val_saved_epoch_" + self.name + ".txt", "w") as f:
+            with open("results/val_saved_epoch_" + self.name + "_" + self.id + ".txt", "w") as f:
                 f.write(str(self.epoch))
             
         if (self.later_phy_loss is None or self.later_phy_loss > phy_loss) and self.epoch > 10000:
             self.later_phy_loss = phy_loss
             torch.save(self.network.state_dict(), "results/best_later_phy" + self.name + ".hdf5")
-            with open("results/phy_saved_epoch_" + self.name + ".txt", "w") as f:
+            with open("results/phy_saved_epoch_" + self.name + "_" + self.id + ".txt", "w") as f:
                 f.write(str(self.epoch))
+            
 
     def loss_fn(self, cc, val, pde, lbfgs=False):
         """Calculates the full loss function."""
@@ -257,6 +264,8 @@ class Model(nn.Module):
         data_loss = cc_loss + bc_loss + ic_loss
 
         total_loss = data_loss * self.weight + phy_loss
+        
+        val_loss = self.mse_loss(val).item()
 
         elapsed_time = time.time() - self.start_time
         elapsed_minutes = elapsed_time / 60
@@ -267,11 +276,11 @@ class Model(nn.Module):
             elapsed_minutes, 
             phy_loss.item(), 
             data_loss.item(), 
-            val, 
+            val_loss, 
             torch.nn.functional.softplus(self.visc).item() + 0.00314159265
         )
         
-        val_loss = self.mse_loss(val)
+        
         self.save_if_best(val_loss, phy_loss)
             
         return total_loss
@@ -341,7 +350,6 @@ class Model(nn.Module):
                 self.weight = 0.1 * self.weight + 0.9 * (max_grad / mean_grad)
                 print("New weight:", self.weight)
         
-        #self.network.load_state_dict(torch.load("best.hdf5"))
         self.patience = 0
 
         # Train with L-BFGS
@@ -349,4 +357,5 @@ class Model(nn.Module):
         self.ev = val
         self.pde = pde
         self.lbfgs_optimizer.step(self.closure)
-        self.network.load_state_dict(torch.load("best.hdf5"))
+        torch.save(self.network.state_dict(), "results/longest_running_model" + self.name + ".hdf5")
+        self.network.load_state_dict(torch.load("results/best_later_val" + self.name + ".hdf5"))

@@ -24,13 +24,16 @@ def main():
     Get the data for the experiments and define the
     noise levels for the PINN experiment.
     """
+
+
+    data = get_data()
+
     for step in range(0, 30):
         data = get_data()
         noise_levels = [0, 0.001, 0.01, 0.05, 0.1, 0.25, 0.5, 1]
-        
-        # Run the PINN and baseline experiments
+
         PINN_experiment(data, noise_levels, step)
-        traditional_experiment(data, noise_levels, step)
+        #traditional_experiment(data, noise_levels, step)
 
 
 if __name__ == "__main__":
