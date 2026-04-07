@@ -13,13 +13,21 @@ Both the seed and step is controlled in main.py. In line 15, you change set_seed
 The steps run are controlled in line 27. For example, you change "for step in range(0, 30):" to "for step in range(0, 2):".
 
 Seed: 1, Steps: 0, 1, 2.
+
 Seed: 2, Steps: 0, 1.
+
 Seed: 3, Steps: 0, 1, 2.
+
 Seed: 4, Steps: 0, 1, 2.
+
 Seed: 5, Steps: 0, 1, 2, 3, 4.
+
 Seed: 6, Steps: 0, 1.
+
 Seed: 7, Steps: 0, 1.
+
 Seed: 8, Steps: 0, 1.
+
 Seed: 9, Steps: 0, 1.
 
 Total steps: 24.
@@ -31,15 +39,25 @@ Same, except we also ran the FEM and PINN parts in parallell with each their mai
 ### main_fem.py
 
 Seed: 1, Steps: 0.
+
 Seed: 2, Steps: 0.
+
 Seed: 3, Steps: 0, 1.
+
 Seed: 4, Steps: 0.
+
 Seed: 5, Steps: 0, 1.
+
 Seed: 6, Steps: 0, 1.
+
 Seed: 7, Steps: 0, 1.
+
 Seed: 8, Steps: 0, 1.
+
 Seed: 9, Steps: 0.
+
 Seed: 10, Steps: 0.
+
 Seed: 12, Steps: 0.
 
 Total steps: 16.
@@ -47,13 +65,21 @@ Total steps: 16.
 ### main_pinn.py
 
 Seed: 1, Steps: 0.
+
 Seed: 2, Steps: 0.
+
 Seed: 3, Steps: 0, 1, 2.
+
 Seed: 4, Steps: 0, 1.
+
 Seed: 9, Steps: 0, 1.
+
 Seed: 10, Steps: 0.
+
 Seed: 11, Steps: 0.
+
 Seed: 12, Steps: 0, 1.
+
 Seed: 13, Steps: 0.
 
 Total steps: 14.
