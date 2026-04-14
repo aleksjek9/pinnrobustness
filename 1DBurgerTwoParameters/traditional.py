@@ -1,91 +1,85 @@
-import os, random
+import os, sys
 import numpy as np
 from sklearn.metrics import root_mean_squared_error
 from traditional_optimizer import Optimizer
 from data import add_noise
 import multiprocessing as mp
-import subprocess, sys
+import subprocess, pickle, random
 
-#How many times to run each experiment
-samples = 1
+"""How many times to run each experiment."""
+samples = 30
 
 def worker(noise_level, seed):
-    subprocess.run(
-    [
-        "mpirun",
-        "-n", "55",
-        sys.executable,
-        "single_trad.py",
-        "--noise", str(noise_level),
-        "--seed", str(seed)
-    ],
-    check=True
-    )
+    subprocess.run([sys.executable, "single_trad.py", "--noise", str(noise_level), "--seed", str(seed)], check=True)
 
-
-def traditional_experiment(data, noise, step, verbose=True, rerun=False, lambdas=[0,0,0,0,0,0,0,0,0]):
+def traditional_experiment(data, noise, verbose=True, rerun=False, lambdas=[0,0,0,0,0,0,0,0,0]):
     '''Runs the full baseline experiments.'''
 
-    #Skips experiment if results are already saved
+    # Skips experiment if results are already saved
     if os.path.isfile("./results/traditional_results.npy") and not rerun:
         print("Loaded traditional results.")
         all_data = np.load("./results/traditional_results.npy", allow_pickle=True)
         return all_data
     
-    # Holds results from all samples
+    # Save results from all samples
     rmse = []
     estimated_parameter = []
     parameter_error = []
     stats = []
+    estimated_advection = []
+    advection_error = []
 
-    # Repeat experiments for every noise level
+    # Repeat experiments for every noise level and save the results
     for i, noise_level in enumerate(noise):
-        # Holds results for all the samples for this noise level
         noise_estimated_parameter = []
         noise_rmse = []
         noise_parameter_error = []
         noise_stats = []
+        noise_estimated_advection = []
+        noise_advection_error = []
 
         # Runs each experiment multiple times
         for sample in range(samples):
-
+            
             seed = random.randint(0, 2**32 - 1)
             mp.set_start_method("spawn", force=True)
             p = mp.Process(target=worker, args=(noise_level, seed))
             p.start()
             p.join()
-            best_viscosity, rms = np.load("trad_results.npy")
-            max_clock_time, total_cpu_time, max_memory, avg_memory = np.load("timings_FEM.npy")
-            noise_stats.append([max_clock_time, total_cpu_time, max_memory, avg_memory])
+            best_viscosity, best_advection, rms = np.load("trad_results.npy")
+            clock_time, cpu_time, peak_memory = np.load("timings.npy")
+            print(clock_time, cpu_time, peak_memory)
+            noise_stats.append([clock_time, cpu_time, peak_memory])
 
             noise_rmse.append(rms)
             noise_estimated_parameter.append(best_viscosity)
-            noise_parameter_error.append(root_mean_squared_error([best_viscosity], [0.01]))
+            noise_parameter_error.append(root_mean_squared_error([best_viscosity], [0.01 / np.pi]))
+
+            noise_estimated_advection.append(best_advection)
+            noise_advection_error.append(root_mean_squared_error([best_advection], [0.55]))
 
             # Outputs statistics while running
             print("Sample: ", str(sample + 1), " out of ", str(samples))
             print("Noise level:" + str(noise_level))
             print("Estimated parameter:" + str(noise_estimated_parameter[-1]))
+            print("Estimated advection:" + str(noise_estimated_advection[-1]))
             print("Test set, RMSE: " + str(noise_rmse[-1]))
             print(noise_stats)
-
-            if sample == samples - 1 or noise_level == 0:
+            
+            if (sample == samples - 1) or noise_level == 0:
                 # After the last sample, we have to save everything
                 rmse.append(noise_rmse)
                 estimated_parameter.append(noise_estimated_parameter)
                 parameter_error.append(noise_parameter_error)
+                estimated_advection.append(noise_estimated_advection)
+                advection_error.append(noise_advection_error)
                 stats.append(noise_stats)
-                
-                all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object), np.array(stats, dtype=object)]
-                arr = np.empty(len(all_results), dtype=object)
-                arr[:] = all_results
-                np.save("./results/traditional_results" + str(step) + "temp_progress.npy", arr)
                 break #For noise_level = 0
 
-    all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object), np.array(stats, dtype=object)]
+    all_results = [np.array(rmse, dtype=object),np.array(estimated_parameter, dtype=object), np.array(parameter_error, dtype=object), np.array(stats, dtype=object), np.array(estimated_advection, dtype=object), np.array(advection_error, dtype=object)]
     arr = np.empty(len(all_results), dtype=object)
     arr[:] = all_results
-    np.save("./results/traditional_results" + str(step) + ".npy", arr)
+    np.save("./results/traditional_results.npy", arr)
     print("Traditional test complete.")
 
     return all_results

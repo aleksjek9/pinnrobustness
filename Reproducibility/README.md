@@ -4,6 +4,10 @@ Since we had to use partly outdated Fenics code, we recommend creating an image 
 
 Simply run main.py from the container provided.
 
+## 1D Burgers' equation with two parameters
+
+Simply run main.py from the container provided.
+
 ## 2D Taylor-Green Vortex
 
 Since we ran multiple instances of this in parallell to complete the experiments in time, to reproduce
@@ -12,25 +16,25 @@ our runs one has to run main.py with different seeds for different steps to repe
 Both the seed and step is controlled in main.py. In line 15, you change set_seed(1) to set_seed(2), etc.
 The steps run are controlled in line 27. For example, you change "for step in range(0, 30):" to "for step in range(0, 2):".
 
-Seed: 1, Steps: 0, 1, 2.
+Seed: 1, Steps: 0, 1, 2, 3.
 
 Seed: 2, Steps: 0, 1.
 
 Seed: 3, Steps: 0, 1, 2.
 
-Seed: 4, Steps: 0, 1, 2.
+Seed: 4, Steps: 0, 1, 2, 3.
 
 Seed: 5, Steps: 0, 1, 2, 3, 4.
 
-Seed: 6, Steps: 0, 1.
+Seed: 6, Steps: 0, 1, 2. 3.
 
-Seed: 7, Steps: 0, 1.
+Seed: 7, Steps: 0, 1, 2.
 
-Seed: 8, Steps: 0, 1.
+Seed: 8, Steps: 0, 1, 2.
 
 Seed: 9, Steps: 0, 1.
 
-Total steps: 24.
+Total steps: 30.
 
 ## 3D Taylor-Green Vortex
 
@@ -38,39 +42,21 @@ Same, except we also ran the FEM and PINN parts in parallell with each their mai
 
 ### main_fem.py
 
-Seed: 1, Steps: 0.
+Seed: 1, Steps: 0, 1.
 
-Seed: 2, Steps: 0.
+Seed: 2, Steps: 0, 1.
 
 Seed: 3, Steps: 0, 1.
 
 Seed: 4, Steps: 0.
 
-Seed: 5, Steps: 0, 1.
+Seed: 5, Steps: 0, 1, 2.
 
-Seed: 6, Steps: 0, 1.
+Seed: 6, Steps: 0, 1, 2.
 
-Seed: 7, Steps: 0, 1.
+Seed: 7, Steps: 0, 1, 2.
 
-Seed: 8, Steps: 0, 1.
-
-Seed: 9, Steps: 0.
-
-Seed: 10, Steps: 0.
-
-Seed: 12, Steps: 0.
-
-Total steps: 16.
-
-### main_pinn.py
-
-Seed: 1, Steps: 0.
-
-Seed: 2, Steps: 0.
-
-Seed: 3, Steps: 0, 1, 2.
-
-Seed: 4, Steps: 0, 1.
+Seed: 8, Steps: 0, 1, 2.
 
 Seed: 9, Steps: 0, 1.
 
@@ -82,6 +68,48 @@ Seed: 12, Steps: 0, 1.
 
 Seed: 13, Steps: 0.
 
-Total steps: 14.
+Seed: 15, Steps: 0.
+
+Seed: 16, Steps: 0.
+
+Seed: 17, Steps: 0.
+
+Seed: 18, Steps: 0.
+
+Total steps: 30.
+
+### main_pinn.py
+
+Seed: 1, Steps: 0.
+
+Seed: 2, Steps: 0, 1.
+
+Seed: 3, Steps: 0, 1, 2.
+
+Seed: 4, Steps: 0, 1, 2.
+
+Seed: 9, Steps: 0, 1.
+
+Seed: 10, Steps: 0.
+
+Seed: 11, Steps: 0.
+
+Seed: 12, Steps: 0, 1, 2, 3.
+
+Seed: 13, Steps: 0, 1, 2.
+
+Seed: 14, Steps: 0, 1.
+
+Seed: 15, Steps: 0, 1.
+
+Seed: 16, Steps: 0, 1.
+
+Seed: 17, Steps: 0, 1.
+
+Seed: 18, Steps: 0.
+
+Seed: 19, Steps: 0.
+
+Total steps: 30.
 
 Note that the PINN/FEM calculations were done seperately, in main_fem_pinn.py, collecting all results from main_pinn.py.
