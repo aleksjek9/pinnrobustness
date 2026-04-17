@@ -57,7 +57,7 @@ def traditional_experiment(data, noise, step, verbose=True, rerun=False, lambdas
 
             noise_rmse.append(rms)
             noise_estimated_parameter.append(best_viscosity)
-            noise_parameter_error.append(root_mean_squared_error([best_viscosity], [0.01]))
+            noise_parameter_error.append(root_mean_squared_error([best_viscosity], [0.1]))
 
             # Outputs statistics while running
             print("Sample: ", str(sample + 1), " out of ", str(samples))
